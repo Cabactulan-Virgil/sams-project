@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SAMS | Login</title>
+  <link rel="stylesheet" href="css/public.css" />
+</head>
+<body>
+  <!-- Splash Screen -->
+  <div id="splash">
+    <h1 class="splash-text">Welcome to Student Attendance Monitoring System</h1>
+    <p class="splash-subtext">Please wait...</p>
+  </div>
+
+  <!-- Hero Section -->
+  <section class="hero-section hidden">
+    <div class="hero-text-wrapper">
+      <h1 class="hero-title">Student Attendance Monitoring System</h1>
+      <p class="hero-subtext">Manage, monitor, and record attendance with ease and efficiency.</p>
+    </div>
+
+    <!-- Login Form -->
+    <div class="login-container">
+      <div class="login-header">
+        <img src="images/logo.png" alt="SAMS Logo" class="login-logo" />
+        <h2>Login Portal</h2>
+        <p>Welcome back! Please login below.</p>
+      </div>
+
+      <form id="loginForm">
+        <!-- Role selector first -->
+        <div class="input-group">
+          <label for="role">Select Role:</label>
+          <select id="role" required>
+            <option value="">-- Select Role --</option>
+            <option value="student">Student</option>
+            <option value="teacher">Teacher</option>
+            <option value="admin">Admin</option>
+          </select>
+        </div>
+
+        <!-- Username -->
+        <div class="input-group">
+          <label for="username">Username:</label>
+          <input type="text" id="username" placeholder="Enter your username" required />
+        </div>
+
+        <!-- Password -->
+        <div class="input-group password-container">
+          <label for="password">Password:</label>
+          <input type="password" id="password" placeholder="Enter your password" required />
+          <button type="button" id="togglePassword" class="toggle-password">Show</button>
+        </div>
+
+        <!-- Submit -->
+        <button type="submit" class="login-btn">Login</button>
+      </form>
+    </div>
+  </section>
+
+  <script src="js/public.js"></script>
+  <script src="js/script.js"></script>
+</body>
+</html>
