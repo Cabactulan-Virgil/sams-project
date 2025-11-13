@@ -1,0 +1,34 @@
+-- Create database
+CREATE DATABASE IF NOT EXISTS database_sams;
+USE database_sams;
+
+-- ==========================
+-- TABLE: roles
+-- ==========================
+CREATE TABLE roles (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(50) NOT NULL UNIQUE,
+    description TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+-- Default roles
+INSERT INTO roles (name, description) VALUES
+('admin', 'Full access to manage users, teachers, and students'),
+('teacher', 'Can manage student attendance and view reports'),
+('student', 'Can view attendance records and personal info');
+
+-- ==========================
+-- TABLE: users
+-- ==========================
+CREATE TABLE users (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    username VARCHAR(100) NOT NULL UNIQUE,
+    password VARCHAR(255) NOT NULL,
+    email VARCHAR(100),
+    role_id INT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (role_id) REFERENCES roles(id)
+);

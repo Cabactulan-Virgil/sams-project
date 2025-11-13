@@ -1,9 +1,10 @@
 import { Sequelize } from 'sequelize';
 
-export const sequelize = new Sequelize('database_sams', 'root', '', {
-  host: 'localhost',
+export const sequelize = new Sequelize('sams_database', 'root', '', {
+  host: '127.0.0.1',
   dialect: 'mysql',
 });
+
 
 export const testConnection = async () => {
   try {

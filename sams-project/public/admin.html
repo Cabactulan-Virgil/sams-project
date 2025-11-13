@@ -3,20 +3,55 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SAMS | Admin Dashboard</title>
-  <link rel="stylesheet" href="css/dashboard.css">
+  <title>SAMS Login</title>
+  <link rel="stylesheet" href="./css/style.css">
 </head>
 <body>
-  <div class="dashboard-container">
-    <h1>Welcome, Admin!</h1>
-    <p>You have successfully logged into the Admin Dashboard.</p>
-    <button onclick="logout()">Logout</button>
+  <!-- Splash -->
+  <div id="splash">
+    <div class="splash-text">SAMS</div>
+    <div class="splash-subtext">Attendance Monitoring System</div>
   </div>
 
-  <script>
-    function logout() {
-      window.location.href = "index.html"; // return to login
-    }
-  </script>
+  <!-- Hero/Login -->
+  <section class="hero-section hidden">
+    <div class="hero-text-wrapper">
+      <h1 class="hero-title">Welcome to SAMS</h1>
+      <p class="hero-subtext">Please login to continue</p>
+    </div>
+
+    <div class="login-container">
+      <form id="loginForm">
+        <div class="login-header">
+          <h2>Login</h2>
+        </div>
+
+        <div class="input-group">
+          <select id="role">
+            <option value="">Select Role</option>
+            <option value="student">Student</option>
+            <option value="teacher">Teacher</option>
+            <option value="admin">Admin</option>
+          </select>
+          <span class="error-msg" id="roleError"></span>
+        </div>
+
+        <div class="input-group">
+          <input type="text" id="email" placeholder="Student ID / School Email">
+          <span class="error-msg" id="emailError"></span>
+        </div>
+
+        <div class="input-group password-container">
+          <input type="password" id="password" placeholder="Password">
+          <button type="button" id="togglePassword" class="toggle-password">Show</button>
+          <span class="error-msg" id="passwordError"></span>
+        </div>
+
+        <button class="login-btn" type="submit">Login</button>
+      </form>
+    </div>
+  </section>
+
+  <script src="./js/index.js" defer></script>
 </body>
 </html>

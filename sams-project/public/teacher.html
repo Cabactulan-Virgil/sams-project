@@ -3,20 +3,44 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SAMS | Student Dashboard</title>
-  <link rel="stylesheet" href="css/dashboard.css">
+  <title>SAMS | Teacher Dashboard</title>
+  <link rel="stylesheet" href="./css/style.css">
 </head>
 <body>
-  <div class="dashboard-container">
-    <h1>Welcome, Student!</h1>
-    <p>This is your Student Dashboard. You’ll see your attendance records here later.</p>
-    <button onclick="logout()">Logout</button>
-  </div>
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <h2>SAMS Teacher</h2>
+    </div>
+    <nav>
+      <ul>
+        <li><a href="#" class="active" data-section="dashboard">Dashboard</a></li>
+        <li><a href="#" data-section="classes">My Classes</a></li>
+        <li><a href="#" data-section="attendance">Attendance</a></li>
+      </ul>
+    </nav>
+    <button class="logout-btn" onclick="logout()">Logout</button>
+  </aside>
 
-  <script>
-    function logout() {
-      window.location.href = "index.html"; // return to login
-    }
-  </script>
+  <main class="main-content">
+    <section id="dashboard" class="content-section active">
+      <h1 class="welcome-text">Welcome, Teacher!</h1>
+      <p class="subtext">Overview of your assigned classes</p>
+      <div class="stats">
+        <div class="stat-card" id="totalClasses">Classes: 0</div>
+      </div>
+    </section>
+
+    <section id="classes" class="content-section">
+      <h2>My Classes</h2>
+      <div id="classesContainer"></div>
+    </section>
+
+    <section id="attendance" class="content-section">
+      <h2>Attendance Records</h2>
+      <div id="attendanceContainer"></div>
+    </section>
+  </main>
+
+  <script src="./js/teacher.js" defer></script>
 </body>
 </html>
