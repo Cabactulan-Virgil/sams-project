@@ -62,3 +62,73 @@ export async function POST(req: Request) {
     );
   }
 }
+
+export async function PUT(req: Request) {
+  try {
+    const body = await req.json();
+    const { id, code, name, description } = body as {
+      id?: number;
+      code?: string;
+      name?: string;
+      description?: string | null;
+    };
+
+    if (!id || !code || !name) {
+      return NextResponse.json(
+        { error: "Subject id, code, and name are required." },
+        { status: 400 }
+      );
+    }
+
+    try {
+      await query(
+        "UPDATE subjects SET code = ?, name = ?, description = ? WHERE id = ?",
+        [code, name, description || null, id]
+      );
+    } catch (error: any) {
+      console.error(error);
+
+      if (error && typeof error === "object" && "code" in error && error.code === "ER_DUP_ENTRY") {
+        return NextResponse.json(
+          { error: "Subject code already exists." },
+          { status: 409 }
+        );
+      }
+
+      throw error;
+    }
+
+    return NextResponse.json({ message: "Subject updated." }, { status: 200 });
+  } catch (error) {
+    console.error(error);
+    return NextResponse.json(
+      { error: "Failed to update subject." },
+      { status: 500 }
+    );
+  }
+}
+
+export async function DELETE(req: Request) {
+  try {
+    const { searchParams } = new URL(req.url);
+    const idParam = searchParams.get("id");
+
+    const id = idParam ? Number(idParam) : NaN;
+    if (!id || Number.isNaN(id)) {
+      return NextResponse.json(
+        { error: "Valid subject id is required." },
+        { status: 400 }
+      );
+    }
+
+    await query("DELETE FROM subjects WHERE id = ?", [id]);
+
+    return NextResponse.json({ message: "Subject deleted." }, { status: 200 });
+  } catch (error) {
+    console.error(error);
+    return NextResponse.json(
+      { error: "Failed to delete subject." },
+      { status: 500 }
+    );
+  }
+}

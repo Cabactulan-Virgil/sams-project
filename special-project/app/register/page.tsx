@@ -128,6 +128,7 @@ export default function RegisterPage() {
               className="w-full rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 outline-none ring-0 transition focus:border-zinc-400 focus:ring-2 focus:ring-zinc-300 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-50 dark:focus:border-zinc-500 dark:focus:ring-zinc-700"
               value={name}
               onChange={(e) => setName(e.target.value)}
+              placeholder="Enter your full name"
               required
             />
           </div>
@@ -141,6 +142,7 @@ export default function RegisterPage() {
               className="w-full rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 outline-none ring-0 transition focus:border-zinc-400 focus:ring-2 focus:ring-zinc-300 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-50 dark:focus:border-zinc-500 dark:focus:ring-zinc-700"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
+              placeholder="Enter your school email"
               required
             />
           </div>
@@ -154,6 +156,7 @@ export default function RegisterPage() {
               className="w-full rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 outline-none ring-0 transition focus:border-zinc-400 focus:ring-2 focus:ring-zinc-300 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-50 dark:focus:border-zinc-500 dark:focus:ring-zinc-700"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
+              placeholder="Choose a secure password"
               required
             />
           </div>
@@ -167,6 +170,7 @@ export default function RegisterPage() {
               className="w-full rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 outline-none ring-0 transition focus:border-zinc-400 focus:ring-2 focus:ring-zinc-300 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-50 dark:focus:border-zinc-500 dark:focus:ring-zinc-700"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
+              placeholder="Re-enter your password"
               required
             />
           </div>
@@ -196,6 +200,7 @@ export default function RegisterPage() {
                   className="w-full rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 outline-none ring-0 transition focus:border-zinc-400 focus:ring-2 focus:ring-zinc-300 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-50 dark:focus:border-zinc-500 dark:focus:ring-zinc-700"
                   value={program}
                   onChange={(e) => setProgram(e.target.value)}
+                  placeholder="e.g. BSIT, BSED"
                   required={role === "teacher"}
                 />
               </div>
@@ -208,6 +213,7 @@ export default function RegisterPage() {
                   className="w-full rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 outline-none ring-0 transition focus:border-zinc-400 focus:ring-2 focus:ring-zinc-300 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-50 dark:focus:border-zinc-500 dark:focus:ring-zinc-700"
                   value={course}
                   onChange={(e) => setCourse(e.target.value)}
+                  placeholder="e.g. IT 101, English 1"
                   required={role === "teacher"}
                 />
               </div>
@@ -220,6 +226,7 @@ export default function RegisterPage() {
                   className="w-full rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 outline-none ring-0 transition focus:border-zinc-400 focus:ring-2 focus:ring-zinc-300 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-50 dark:focus:border-zinc-500 dark:focus:ring-zinc-700"
                   value={level}
                   onChange={(e) => setLevel(e.target.value)}
+                  placeholder="e.g. 1st Year, Grade 10"
                   required={role === "teacher"}
                 />
               </div>
@@ -237,6 +244,7 @@ export default function RegisterPage() {
                   className="w-full rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 outline-none ring-0 transition focus:border-zinc-400 focus:ring-2 focus:ring-zinc-300 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-50 dark:focus:border-zinc-500 dark:focus:ring-zinc-700"
                   value={department}
                   onChange={(e) => setDepartment(e.target.value)}
+                  placeholder="e.g. College of IT, SHS"
                   required={role === "student"}
                 />
               </div>
@@ -249,6 +257,7 @@ export default function RegisterPage() {
                   className="w-full rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 outline-none ring-0 transition focus:border-zinc-400 focus:ring-2 focus:ring-zinc-300 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-50 dark:focus:border-zinc-500 dark:focus:ring-zinc-700"
                   value={yearLevel}
                   onChange={(e) => setYearLevel(e.target.value)}
+                  placeholder="e.g. 1st Year, Grade 11"
                   required={role === "student"}
                 />
               </div>

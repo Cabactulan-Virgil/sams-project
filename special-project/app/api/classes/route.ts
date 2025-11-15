@@ -54,3 +54,60 @@ export async function POST(req: Request) {
     );
   }
 }
+
+export async function PUT(req: Request) {
+  try {
+    const body = await req.json();
+    const { id, name, section, schoolYear } = body as {
+      id?: number;
+      name?: string;
+      section?: string | null;
+      schoolYear?: string | null;
+    };
+
+    if (!id || !name) {
+      return NextResponse.json(
+        { error: "Class id and name are required." },
+        { status: 400 }
+      );
+    }
+
+    await query(
+      "UPDATE classes SET name = ?, section = ?, school_year = ? WHERE id = ?",
+      [name, section || null, schoolYear || null, id]
+    );
+
+    return NextResponse.json({ message: "Class updated." }, { status: 200 });
+  } catch (error) {
+    console.error(error);
+    return NextResponse.json(
+      { error: "Failed to update class." },
+      { status: 500 }
+    );
+  }
+}
+
+export async function DELETE(req: Request) {
+  try {
+    const { searchParams } = new URL(req.url);
+    const idParam = searchParams.get("id");
+
+    const id = idParam ? Number(idParam) : NaN;
+    if (!id || Number.isNaN(id)) {
+      return NextResponse.json(
+        { error: "Valid class id is required." },
+        { status: 400 }
+      );
+    }
+
+    await query("DELETE FROM classes WHERE id = ?", [id]);
+
+    return NextResponse.json({ message: "Class deleted." }, { status: 200 });
+  } catch (error) {
+    console.error(error);
+    return NextResponse.json(
+      { error: "Failed to delete class." },
+      { status: 500 }
+    );
+  }
+}

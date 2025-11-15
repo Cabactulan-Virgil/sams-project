@@ -54,6 +54,7 @@ const AdminClasses: FC<Props> = ({
             type="text"
             value={className}
             onChange={(e) => onClassNameChange(e.target.value)}
+            placeholder="e.g. BSIT 1A, Grade 10 - St. Paul"
             className="w-full rounded-md border border-zinc-200 bg-white px-2.5 py-1.5 text-xs text-zinc-900 outline-none ring-0 transition focus:border-zinc-400 focus:ring-1 focus:ring-zinc-200 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50 dark:focus:border-zinc-500 dark:focus:ring-zinc-800"
             required
           />
@@ -66,6 +67,7 @@ const AdminClasses: FC<Props> = ({
             type="text"
             value={classSection}
             onChange={(e) => onClassSectionChange(e.target.value)}
+            placeholder="e.g. Section A, STEM"
             className="w-full rounded-md border border-zinc-200 bg-white px-2.5 py-1.5 text-xs text-zinc-900 outline-none ring-0 transition focus:border-zinc-400 focus:ring-1 focus:ring-zinc-200 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50 dark:focus:border-zinc-500 dark:focus:ring-zinc-800"
           />
         </div>

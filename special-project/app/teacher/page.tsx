@@ -2,6 +2,7 @@
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { FiCheckSquare } from "react-icons/fi";
 
 type CurrentUser = {
   id: number;
@@ -45,6 +46,8 @@ export default function TeacherPage() {
   const [saving, setSaving] = useState(false);
 
   const [statuses, setStatuses] = useState<Record<number, AttendanceStatus>>({});
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
 
   useEffect(() => {
     const init = async () => {
@@ -185,6 +188,14 @@ export default function TeacherPage() {
     setStatuses((prev) => ({ ...prev, [enrollmentId]: value as AttendanceStatus }));
   }
 
+  function handleToggleSidebar() {
+    setIsSidebarOpen((prev) => !prev);
+  }
+
+  function handleToggleProfile() {
+    setIsProfileOpen((prev) => !prev);
+  }
+
   function handleLogout() {
     try {
       window.localStorage.removeItem("currentUser");
@@ -218,46 +229,129 @@ export default function TeacherPage() {
   }
 
   return (
-    <div className="min-h-screen bg-zinc-50 font-sans text-zinc-950 dark:bg-black dark:text-zinc-50">
-      <div className="mx-auto flex min-h-screen w-full max-w-6xl flex-col gap-6 px-4 py-8 md:px-8 md:py-10">
-        <header className="flex flex-col items-start justify-between gap-3 border-b border-zinc-200 pb-4 dark:border-zinc-800 md:flex-row md:items-center">
-          <div>
-            <h1 className="text-2xl font-semibold">Teacher dashboard</h1>
-            <p className="text-sm text-zinc-600 dark:text-zinc-400">
-              View your assigned students and record attendance for your classes.
-            </p>
-          </div>
-          {currentUser && (
-            <div className="flex items-center gap-3 text-xs text-zinc-600 dark:text-zinc-400">
-              <div>
-                <div className="font-medium text-zinc-900 dark:text-zinc-100">{currentUser.name}</div>
-                <div>{currentUser.email}</div>
+    <div className="min-h-screen bg-slate-100 font-sans text-slate-950 dark:bg-slate-950 dark:text-slate-50">
+      <div className="flex min-h-screen w-full">
+        <aside
+          className={`hidden min-h-screen bg-gradient-to-b from-slate-900 to-slate-800 px-3 py-6 text-slate-100 md:flex md:flex-col ${
+            isSidebarOpen ? "w-64" : "w-20"
+          }`}
+        >
+          <div className="mb-6 flex items-center justify-between gap-2">
+            {currentUser && (
+              <div className="flex items-center gap-2">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-700 text-xs font-semibold text-slate-50">
+                  {currentUser.name.charAt(0).toUpperCase()}
+                </div>
+                {isSidebarOpen && (
+                  <div className="space-y-0.5">
+                    <p className="text-sm font-semibold leading-tight">{currentUser.name}</p>
+                    <p className="max-w-[150px] truncate text-[11px] text-slate-300">{currentUser.email}</p>
+                  </div>
+                )}
               </div>
-              <button
-                type="button"
-                onClick={handleLogout}
-                className="rounded-md border border-zinc-300 bg-white px-3 py-1 text-xs font-medium text-zinc-800 transition hover:bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:bg-zinc-800"
-              >
-                Log out
-              </button>
+            )}
+            <button
+              type="button"
+              onClick={handleToggleSidebar}
+              className="ml-auto inline-flex h-7 w-7 items-center justify-center rounded-full bg-slate-800 text-[11px] font-semibold text-slate-100 hover:bg-slate-700"
+              aria-label={isSidebarOpen ? "Minimize sidebar" : "Expand sidebar"}
+            >
+              {isSidebarOpen ? "«" : ">"}
+            </button>
+          </div>
+
+          {isSidebarOpen && (
+            <p className="mb-3 text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+              Teacher menu
+            </p>
+          )}
+          <nav className="space-y-1 text-xs">
+            <button
+              type="button"
+              className="flex w-full items-center rounded-lg bg-slate-100 px-3 py-2 text-xs font-medium text-slate-900 shadow-sm"
+            >
+              <span className="flex items-center gap-2">
+                <span className="text-sm">
+                  <FiCheckSquare />
+                </span>
+                {isSidebarOpen && <span>Attendance</span>}
+              </span>
+            </button>
+          </nav>
+
+          {currentUser && (
+            <div className="mt-auto rounded-lg bg-slate-800/70 px-3 py-3 text-[11px] text-slate-300">
+              {isSidebarOpen && (
+                <>
+                  <p className="mb-1 text-[11px] font-semibold text-slate-200">Signed in as</p>
+                  <p className="truncate">{currentUser.name}</p>
+                  <p className="truncate">{currentUser.email}</p>
+                </>
+              )}
+              {!isSidebarOpen && (
+                <p className="text-center text-[10px] text-slate-300">Signed in</p>
+              )}
             </div>
           )}
-        </header>
+        </aside>
 
-        {error && (
-          <div className="rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-500/70 dark:bg-red-950/40 dark:text-red-200">
-            {error}
-          </div>
-        )}
+        <div className="flex min-h-screen flex-1 flex-col">
+          <header className="flex flex-col items-start justify-between gap-3 border-b border-zinc-200 px-4 pb-4 dark:border-zinc-800 md:flex-row md:items-center md:px-8">
+            <div className="flex w-full items-center justify-between gap-3 md:w-auto">
+              <div>
+                <h1 className="text-2xl font-semibold">Teacher dashboard</h1>
+                <p className="text-sm text-zinc-600 dark:text-zinc-400">
+                  View your assigned students and record attendance for your classes.
+                </p>
+              </div>
+            </div>
+            {currentUser && (
+              <div className="relative flex items-center gap-3 text-xs text-zinc-600 dark:text-zinc-400">
+                <button
+                  type="button"
+                  onClick={handleToggleProfile}
+                  className="flex items-center gap-2 rounded-full border border-zinc-300 bg-white px-3 py-1 text-left text-xs font-medium text-zinc-800 shadow-sm transition hover:bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:bg-zinc-800"
+                >
+                  <div className="flex h-7 w-7 items-center justify-center rounded-full bg-zinc-900 text-[11px] font-semibold text-zinc-50 dark:bg-zinc-50 dark:text-zinc-900">
+                    {currentUser.name.charAt(0).toUpperCase()}
+                  </div>
+                  <div className="hidden text-right sm:block">
+                    <div className="font-medium text-zinc-900 dark:text-zinc-100">{currentUser.name}</div>
+                    <div className="max-w-[160px] truncate text-[11px] text-zinc-500 dark:text-zinc-400">
+                      {currentUser.email}
+                    </div>
+                  </div>
+                </button>
+                {isProfileOpen && (
+                  <div className="absolute right-0 top-full z-20 mt-2 w-40 rounded-md border border-zinc-200 bg-white py-1 text-xs shadow-lg dark:border-zinc-700 dark:bg-zinc-900">
+                    <button
+                      type="button"
+                      onClick={handleLogout}
+                      className="flex w-full items-center justify-between px-3 py-2 text-left text-zinc-700 transition hover:bg-zinc-100 dark:text-zinc-100 dark:hover:bg-zinc-800"
+                    >
+                      <span>Log out</span>
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+          </header>
 
-        {message && (
-          <div className="rounded-md border border-emerald-300 bg-emerald-50 px-3 py-2 text-sm text-emerald-800 dark:border-emerald-500/70 dark:bg-emerald-950/40 dark:text-emerald-200">
-            {message}
-          </div>
-        )}
+          {error && (
+            <div className="mx-4 mt-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 shadow-sm dark:mx-8 dark:border-red-500/70 dark:bg-red-950/40 dark:text-red-200">
+              {error}
+            </div>
+          )}
 
-        <section className="rounded-xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
-          <form onSubmit={handleSaveAttendance} className="space-y-4">
+          {message && (
+            <div className="mx-4 mt-4 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800 shadow-sm dark:mx-8 dark:border-emerald-500/70 dark:bg-emerald-950/40 dark:text-emerald-200">
+              {message}
+            </div>
+          )}
+
+          <main className="flex-1 px-4 pb-6 pt-4 md:px-8 md:pb-8">
+            <section className="rounded-xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
+              <form onSubmit={handleSaveAttendance} className="space-y-4">
             <div className="grid gap-3 md:grid-cols-3">
               <div className="space-y-1.5">
                 <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-200">
@@ -387,13 +481,15 @@ export default function TeacherPage() {
                 {saving ? "Saving attendance..." : "Save attendance"}
               </button>
             </div>
-          </form>
+              </form>
 
-          <p className="mt-3 text-[11px] text-zinc-500 dark:text-zinc-400">
-            Tip: use the class and subject filters above to narrow down the list before
-            saving attendance.
-          </p>
-        </section>
+              <p className="mt-3 text-[11px] text-zinc-500 dark:text-zinc-400">
+                Tip: use the class and subject filters above to narrow down the list before
+                saving attendance.
+              </p>
+            </section>
+          </main>
+        </div>
       </div>
     </div>
   );
