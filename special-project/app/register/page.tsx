@@ -9,6 +9,11 @@ export default function RegisterPage() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [role, setRole] = useState("student");
+  const [program, setProgram] = useState("");
+  const [course, setCourse] = useState("");
+  const [level, setLevel] = useState("");
+  const [department, setDepartment] = useState("");
+  const [yearLevel, setYearLevel] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -23,15 +28,47 @@ export default function RegisterPage() {
       return;
     }
 
+    if (role === "teacher") {
+      if (!program.trim() || !course.trim() || !level.trim()) {
+        setError("Program, course, and level are required for teachers.");
+        return;
+      }
+    }
+
+    if (role === "student") {
+      if (!department.trim() || !yearLevel.trim()) {
+        setError("Department and year are required for students.");
+        return;
+      }
+    }
+
     setLoading(true);
 
     try {
+      const payload: { [key: string]: unknown } = {
+        name,
+        email,
+        password,
+        role,
+      };
+
+      if (role === "teacher") {
+        payload.program = program.trim();
+        payload.course = course.trim();
+        payload.level = level.trim();
+      }
+
+      if (role === "student") {
+        payload.department = department.trim();
+        payload.yearLevel = yearLevel.trim();
+      }
+
       const res = await fetch("/api/register", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ name, email, password, role }),
+        body: JSON.stringify(payload),
       });
 
       const data = await res.json();
@@ -47,6 +84,11 @@ export default function RegisterPage() {
       setPassword("");
       setConfirmPassword("");
       setRole("student");
+      setProgram("");
+      setCourse("");
+      setLevel("");
+      setDepartment("");
+      setYearLevel("");
     } catch (err) {
       setError("Something went wrong. Please try again.");
     } finally {
@@ -61,7 +103,7 @@ export default function RegisterPage() {
           Register
         </h1>
         <p className="mb-6 text-center text-sm text-zinc-600 dark:text-zinc-400">
-          Create an account and choose a role.
+          Create a student or teacher account.
         </p>
 
         {error && (
@@ -140,9 +182,78 @@ export default function RegisterPage() {
             >
               <option value="student">Student</option>
               <option value="teacher">Teacher</option>
-              <option value="admin">Admin</option>
             </select>
           </div>
+
+          {role === "teacher" && (
+            <div className="space-y-3">
+              <div className="space-y-1">
+                <label className="block text-sm font-medium text-zinc-800 dark:text-zinc-100">
+                  Program
+                </label>
+                <input
+                  type="text"
+                  className="w-full rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 outline-none ring-0 transition focus:border-zinc-400 focus:ring-2 focus:ring-zinc-300 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-50 dark:focus:border-zinc-500 dark:focus:ring-zinc-700"
+                  value={program}
+                  onChange={(e) => setProgram(e.target.value)}
+                  required={role === "teacher"}
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="block text-sm font-medium text-zinc-800 dark:text-zinc-100">
+                  Course
+                </label>
+                <input
+                  type="text"
+                  className="w-full rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 outline-none ring-0 transition focus:border-zinc-400 focus:ring-2 focus:ring-zinc-300 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-50 dark:focus:border-zinc-500 dark:focus:ring-zinc-700"
+                  value={course}
+                  onChange={(e) => setCourse(e.target.value)}
+                  required={role === "teacher"}
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="block text-sm font-medium text-zinc-800 dark:text-zinc-100">
+                  Level
+                </label>
+                <input
+                  type="text"
+                  className="w-full rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 outline-none ring-0 transition focus:border-zinc-400 focus:ring-2 focus:ring-zinc-300 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-50 dark:focus:border-zinc-500 dark:focus:ring-zinc-700"
+                  value={level}
+                  onChange={(e) => setLevel(e.target.value)}
+                  required={role === "teacher"}
+                />
+              </div>
+            </div>
+          )}
+
+          {role === "student" && (
+            <div className="space-y-3">
+              <div className="space-y-1">
+                <label className="block text-sm font-medium text-zinc-800 dark:text-zinc-100">
+                  Department
+                </label>
+                <input
+                  type="text"
+                  className="w-full rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 outline-none ring-0 transition focus:border-zinc-400 focus:ring-2 focus:ring-zinc-300 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-50 dark:focus:border-zinc-500 dark:focus:ring-zinc-700"
+                  value={department}
+                  onChange={(e) => setDepartment(e.target.value)}
+                  required={role === "student"}
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="block text-sm font-medium text-zinc-800 dark:text-zinc-100">
+                  Year
+                </label>
+                <input
+                  type="text"
+                  className="w-full rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 outline-none ring-0 transition focus:border-zinc-400 focus:ring-2 focus:ring-zinc-300 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-50 dark:focus:border-zinc-500 dark:focus:ring-zinc-700"
+                  value={yearLevel}
+                  onChange={(e) => setYearLevel(e.target.value)}
+                  required={role === "student"}
+                />
+              </div>
+            </div>
+          )}
 
           <button
             type="submit"

@@ -7,7 +7,8 @@ import AdminOverview from "./AdminOverview";
 import AdminClasses from "./AdminClasses";
 import AdminSubjects from "./AdminSubjects";
 import AdminEnrollment from "./AdminEnrollment";
-import { FiHome, FiBookOpen, FiLayers, FiUserCheck } from "react-icons/fi";
+import AdminReports from "./AdminReports";
+import { FiHome, FiBookOpen, FiLayers, FiUserCheck, FiBarChart2 } from "react-icons/fi";
 
 type CurrentUser = {
   id: number;
@@ -39,7 +40,7 @@ type UserItem = {
   role: string;
 };
 
-type AdminSection = "overview" | "classes" | "subjects" | "enrollment";
+type AdminSection = "overview" | "classes" | "subjects" | "enrollment" | "reports";
 
 export default function AdminPage() {
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
@@ -77,6 +78,7 @@ export default function AdminPage() {
     { id: "classes", label: "Classes", icon: <FiLayers /> },
     { id: "subjects", label: "Subjects", icon: <FiBookOpen /> },
     { id: "enrollment", label: "Enrollments", icon: <FiUserCheck /> },
+    { id: "reports", label: "Reports", icon: <FiBarChart2 /> },
   ];
 
   useEffect(() => {
@@ -491,6 +493,8 @@ export default function AdminPage() {
                 onSubmit={handleCreateEnrollment}
               />
             )}
+
+            {activeSection === "reports" && <AdminReports />}
           </main>
         </div>
       </div>
