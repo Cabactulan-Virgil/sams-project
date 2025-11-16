@@ -1,57 +1,80 @@
 import bcrypt from 'bcryptjs';
-import { query } from '../../../lib/db';
-import { buildAuthCookie } from '../../../lib/auth';
+import prisma from '../../../lib/prisma';
+import { buildAuthCookie, signAuthToken } from '../../../lib/auth';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
-    res.setHeader('Allow', ['POST']);
     return res.status(405).json({ message: 'Method not allowed' });
   }
 
-  const { email, password } = req.body || {};
-
-  if (!email || !password) {
-    return res.status(400).json({ message: 'Email and password are required' });
-  }
-
   try {
-    const users = await query(
-      'SELECT id, name, email, password_hash, role FROM users WHERE email = ? LIMIT 1',
-      [email]
-    );
+    const { email, password } = req.body;
 
-    if (!users || users.length === 0) {
-      return res.status(401).json({ message: 'Invalid credentials' });
+    // Input validation
+    if (!email || !password) {
+      return res.status(400).json({ message: 'Email and password are required' });
     }
 
-    const user = users[0];
-    const valid = await bcrypt.compare(password, user.password_hash);
+    // Find user by email
+    const user = await prisma.user.findUnique({
+      where: { email },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        passwordHash: true,
+        role: true,
+      },
+    });
 
-    if (!valid) {
-      return res.status(401).json({ message: 'Invalid credentials' });
+    // Check if user exists
+    if (!user) {
+      return res.status(401).json({ message: 'Invalid email or password' });
     }
 
-    const payload = {
+    // Verify password
+    const isPasswordValid = await bcrypt.compare(password, user.passwordHash);
+    if (!isPasswordValid) {
+      return res.status(401).json({ message: 'Invalid email or password' });
+    }
+
+    // Create JWT token
+    const token = signAuthToken({
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+    });
+
+    // Set HTTP-only cookie
+    res.setHeader('Set-Cookie', buildAuthCookie(token));
+
+    // Return user data (without sensitive info)
+    const userData = {
       id: user.id,
       name: user.name,
       email: user.email,
       role: user.role,
     };
 
-    res.setHeader('Set-Cookie', buildAuthCookie(payload));
+    // Determine redirect path based on role
+    const redirectTo = {
+      admin: '/admin',
+      teacher: '/teacher',
+      student: '/student',
+    }[user.role] || '/';
 
-    let redirectTo = '/';
-    if (user.role === 'admin') {
-      redirectTo = '/admin';
-    } else if (user.role === 'teacher') {
-      redirectTo = '/teacher';
-    } else if (user.role === 'student') {
-      redirectTo = '/student';
-    }
+    return res.status(200).json({
+      success: true,
+      user: userData,
+      redirectTo,
+    });
 
-    return res.status(200).json({ user: payload, redirectTo });
-  } catch (err) {
-    console.error('Login error', err);
-    return res.status(500).json({ message: 'Internal server error' });
+  } catch (error) {
+    console.error('Login error:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'An error occurred during login. Please try again.',
+    });
   }
 }

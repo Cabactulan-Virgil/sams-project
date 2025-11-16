@@ -1,53 +1,65 @@
 import crypto from 'crypto';
 
-const AUTH_SECRET = process.env.AUTH_SECRET || 'change-me-in-production';
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) throw new Error('JWT_SECRET is not defined in .env');
 
-function signAuthToken(payload) {
-  const json = JSON.stringify(payload);
-  const base = Buffer.from(json, 'utf8').toString('base64');
-  const hmac = crypto.createHmac('sha256', AUTH_SECRET).update(base).digest('base64');
-  const token = `${base}.${hmac}`;
-  return encodeURIComponent(token);
+// Sign a JWT token with user data
+export function signAuthToken(payload) {
+  const header = { typ: 'JWT', alg: 'HS256' };
+  const encodedHeader = Buffer.from(JSON.stringify(header)).toString('base64');
+  const encodedPayload = Buffer.from(JSON.stringify(payload)).toString('base64');
+  const signature = crypto
+    .createHmac('sha256', JWT_SECRET)
+    .update(`${encodedHeader}.${encodedPayload}`)
+    .digest('base64');
+    
+  return `${encodedHeader}.${encodedPayload}.${signature}`;
 }
 
-function verifyAuthToken(token) {
+// Verify and decode a JWT token
+export function verifyAuthToken(token) {
   if (!token) return null;
-
+  
   try {
-    const decoded = decodeURIComponent(token);
-    const parts = decoded.split('.');
-    if (parts.length !== 2) return null;
-
-    const [base, sig] = parts;
-    const expected = crypto.createHmac('sha256', AUTH_SECRET).update(base).digest('base64');
-    if (sig !== expected) return null;
-
-    const json = Buffer.from(base, 'base64').toString('utf8');
-    return JSON.parse(json);
-  } catch (err) {
+    const [encodedHeader, encodedPayload, signature] = token.split('.');
+    if (!encodedHeader || !encodedPayload || !signature) return null;
+    
+    const expectedSignature = crypto
+      .createHmac('sha256', JWT_SECRET)
+      .update(`${encodedHeader}.${encodedPayload}`)
+      .digest('base64');
+      
+    if (signature !== expectedSignature) return null;
+    
+    return JSON.parse(Buffer.from(encodedPayload, 'base64').toString('utf8'));
+  } catch (error) {
+    console.error('Token verification failed:', error);
     return null;
   }
 }
 
-function buildAuthCookie(payload) {
-  const token = signAuthToken(payload);
-  const maxAge = 60 * 60 * 24 * 7;
-  const secure = process.env.NODE_ENV === 'production' ? '; Secure' : '';
-  return `auth_token=${token}; HttpOnly; Path=/; SameSite=Lax; Max-Age=${maxAge}${secure}`;
+// Set auth cookie with JWT token
+export function buildAuthCookie(token) {
+  const isProduction = process.env.NODE_ENV === 'production';
+  const secureFlag = isProduction ? 'Secure; ' : '';
+  const sameSite = isProduction ? 'Lax' : 'Strict';
+  
+  return `auth=${token}; Path=/; HttpOnly; ${secureFlag}SameSite=${sameSite}; Max-Age=604800`; // 7 days
 }
 
-function clearAuthCookie() {
-  const secure = process.env.NODE_ENV === 'production' ? '; Secure' : '';
-  return `auth_token=; HttpOnly; Path=/; SameSite=Lax; Max-Age=0${secure}`;
+// Clear auth cookie
+export function clearAuthCookie() {
+  return 'auth=; Path=/; HttpOnly; Max-Age=0';
 }
 
-function getUserFromRequest(req) {
-  const cookieHeader = req.headers.cookie || '';
-  const cookies = cookieHeader.split(';').map(c => c.trim());
-  const pair = cookies.find(c => c.startsWith('auth_token='));
-  if (!pair) return null;
-  const token = pair.substring('auth_token='.length);
-  return verifyAuthToken(token);
+// Get user from request cookies
+export function getUserFromRequest(req) {
+  try {
+    const cookie = req?.headers?.cookie || '';
+    const match = cookie.match(/auth=([^;]+)/);
+    return match ? verifyAuthToken(match[1]) : null;
+  } catch (error) {
+    console.error('Error getting user from request:', error);
+    return null;
+  }
 }
-
-export { signAuthToken, verifyAuthToken, buildAuthCookie, clearAuthCookie, getUserFromRequest };
