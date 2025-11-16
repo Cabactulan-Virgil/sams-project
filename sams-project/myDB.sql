@@ -17,6 +17,15 @@ CREATE TABLE IF NOT EXISTS users (
   DEFAULT CHARSET=utf8mb4
   COLLATE=utf8mb4_unicode_ci;
 
+-- Sample seed users
+-- Passwords (plaintext) for login testing:
+--   admin123, teacher123, student123
+INSERT INTO users (name, email, password_hash, role)
+VALUES
+  ('System Admin', 'admin@sams.local', '$2a$10$am562K3mxBZvIiuWis/9dOmzkCumWaF9VY6zgOTakCNAoCUoQoCaG', 'admin'),
+  ('Sample Teacher', 'teacher@sams.local', '$2a$10$T.dVWFC.QPRXBkjfO1WedOTfQtfmPFkA4TsIMqGjPCu8kuInT2d52', 'teacher'),
+  ('Sample Student', 'student@sams.local', '$2a$10$fr.we2LTFpuXL9fG8tniCejsq16WqW0tziz8I.uP1ye3zVP1KCNyi', 'student');
+
 CREATE TABLE IF NOT EXISTS classes (
   id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   name VARCHAR(100) NOT NULL,         -- e.g. BSIT 1A, Grade 10 - St. Paul

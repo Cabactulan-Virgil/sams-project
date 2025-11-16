@@ -17,9 +17,11 @@ export default function DashboardHeader({ user }) {
           {user?.role === 'admin' ? 'Administrator Dashboard' : 'Dashboard'}
         </h1>
         <p className="text-sm text-gray-800">
-          Welcome, {user?.name} ({user?.email}).
+          Welcome, {user?.name || (user?.role === 'admin' ? 'Administrator' : 'User')}.
         </p>
-        <p className="text-xs text-gray-500">Role: {user?.role}</p>
+        {user?.role && (
+          <p className="text-xs text-gray-500">Role: {user.role}</p>
+        )}
       </div>
       <button
         type="button"
