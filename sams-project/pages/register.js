@@ -22,6 +22,7 @@ export default function Register() {
   });
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -138,6 +139,7 @@ export default function Register() {
                   required
                   value={formData.name}
                   onChange={handleChange}
+                  placeholder="Enter your full name"
                   className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                 />
               </div>
@@ -156,6 +158,7 @@ export default function Register() {
                   required
                   value={formData.email}
                   onChange={handleChange}
+                  placeholder="Enter your email address"
                   className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                 />
               </div>
@@ -165,18 +168,26 @@ export default function Register() {
               <label htmlFor="password" className="block text-sm font-medium text-gray-700">
                 Password
               </label>
-              <div className="mt-1">
+              <div className="mt-1 relative">
                 <input
                   id="password"
                   name="password"
-                  type="password"
+                  type={showPassword ? 'text' : 'password'}
                   autoComplete="new-password"
                   required
                   minLength={6}
                   value={formData.password}
                   onChange={handleChange}
-                  className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                  placeholder="Create a password (min 6 characters)"
+                  className="appearance-none block w-full pr-16 px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(prev => !prev)}
+                  className="absolute inset-y-0 right-0 flex items-center px-3 text-xs font-medium text-gray-600 hover:text-gray-900 focus:outline-none"
+                >
+                  {showPassword ? 'Hide' : 'Show'}
+                </button>
               </div>
               <p className="mt-1 text-xs text-gray-500">Must be at least 6 characters</p>
             </div>
@@ -217,6 +228,7 @@ export default function Register() {
                       required
                       value={formData.teacherProgram}
                       onChange={handleChange}
+                      placeholder="e.g. BSED, BSED-MATH"
                       className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                     />
                   </div>
@@ -233,6 +245,7 @@ export default function Register() {
                       required
                       value={formData.teacherCourse}
                       onChange={handleChange}
+                      placeholder="Enter course"
                       className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                     />
                   </div>
@@ -249,6 +262,7 @@ export default function Register() {
                       required
                       value={formData.teacherLevel}
                       onChange={handleChange}
+                      placeholder="e.g. 1st year, 2nd year"
                       className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                     />
                   </div>
@@ -270,6 +284,7 @@ export default function Register() {
                       required
                       value={formData.studentDepartment}
                       onChange={handleChange}
+                      placeholder="e.g. CTE, CAS, CBA"
                       className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                     />
                   </div>
@@ -286,6 +301,7 @@ export default function Register() {
                       required
                       value={formData.studentYear}
                       onChange={handleChange}
+                      placeholder="e.g. 1st year, 2nd year"
                       className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                     />
                   </div>
