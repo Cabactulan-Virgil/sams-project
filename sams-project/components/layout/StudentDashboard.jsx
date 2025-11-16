@@ -1,4 +1,4 @@
-import DashboardHeader from '../DashboardHeader';
+import DashboardHeader from './DashboardHeader';
 
 export default function TeacherDashboard({ user, classes = [] }) {
   return (

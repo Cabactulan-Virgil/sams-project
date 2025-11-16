@@ -1,4 +1,4 @@
-import TeacherDashboardLayout from '../../components/layout/TeacherDashboardLayout';
+import TeacherDashboardLayout from '../../components/teacher/TeacherDashboardLayout';
 import { getUserFromRequest } from '../../lib/auth';
 import prisma from '../../lib/prisma';
 

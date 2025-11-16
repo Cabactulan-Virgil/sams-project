@@ -5,7 +5,6 @@ import Head from 'next/head';
 const ROLES = [
   { value: 'student', label: 'Student' },
   { value: 'teacher', label: 'Teacher' },
-  { value: 'admin', label: 'Administrator' },
 ];
 
 export default function Register() {
@@ -15,6 +14,11 @@ export default function Register() {
     email: '',
     password: '',
     role: 'student',
+    teacherProgram: '',
+    teacherCourse: '',
+    teacherLevel: '',
+    studentDepartment: '',
+    studentYear: '',
   });
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -35,6 +39,18 @@ export default function Register() {
     if (!/\S+@\S+\.\S+/.test(formData.email)) {
       setError('Please enter a valid email address');
       return false;
+    }
+    if (formData.role === 'teacher') {
+      if (!formData.teacherProgram || !formData.teacherCourse || !formData.teacherLevel) {
+        setError('Please fill in program, course, and level for teachers');
+        return false;
+      }
+    }
+    if (formData.role === 'student') {
+      if (!formData.studentDepartment || !formData.studentYear) {
+        setError('Please fill in department and year for students');
+        return false;
+      }
     }
     return true;
   };
@@ -186,6 +202,96 @@ export default function Register() {
                 </select>
               </div>
             </div>
+
+            {formData.role === 'teacher' && (
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div>
+                  <label htmlFor="teacherProgram" className="block text-sm font-medium text-gray-700">
+                    Program
+                  </label>
+                  <div className="mt-1">
+                    <input
+                      id="teacherProgram"
+                      name="teacherProgram"
+                      type="text"
+                      required
+                      value={formData.teacherProgram}
+                      onChange={handleChange}
+                      className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label htmlFor="teacherCourse" className="block text-sm font-medium text-gray-700">
+                    Course
+                  </label>
+                  <div className="mt-1">
+                    <input
+                      id="teacherCourse"
+                      name="teacherCourse"
+                      type="text"
+                      required
+                      value={formData.teacherCourse}
+                      onChange={handleChange}
+                      className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label htmlFor="teacherLevel" className="block text-sm font-medium text-gray-700">
+                    Level
+                  </label>
+                  <div className="mt-1">
+                    <input
+                      id="teacherLevel"
+                      name="teacherLevel"
+                      type="text"
+                      required
+                      value={formData.teacherLevel}
+                      onChange={handleChange}
+                      className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {formData.role === 'student' && (
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div>
+                  <label htmlFor="studentDepartment" className="block text-sm font-medium text-gray-700">
+                    Department
+                  </label>
+                  <div className="mt-1">
+                    <input
+                      id="studentDepartment"
+                      name="studentDepartment"
+                      type="text"
+                      required
+                      value={formData.studentDepartment}
+                      onChange={handleChange}
+                      className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label htmlFor="studentYear" className="block text-sm font-medium text-gray-700">
+                    Year level
+                  </label>
+                  <div className="mt-1">
+                    <input
+                      id="studentYear"
+                      name="studentYear"
+                      type="text"
+                      required
+                      value={formData.studentYear}
+                      onChange={handleChange}
+                      className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
 
             <div>
               <button

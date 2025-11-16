@@ -1,4 +1,4 @@
-import DashboardHeader from './layout/DashboardHeader'; // if DashboardHeader.jsx is in `components/`
+import DashboardHeader from './DashboardHeader';
 
 export default function TeacherDashboard({ user, classes = [] }) {
   return (
