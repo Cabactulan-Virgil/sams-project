@@ -45,27 +45,35 @@ export default function RegisterPage() {
   }
 
   return (
-    <main style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f5f5f5' }}>
-      <div style={{ background: '#ffffff', padding: '2rem', borderRadius: '0.5rem', width: '100%', maxWidth: '420px', boxShadow: '0 10px 25px rgba(0,0,0,0.05)' }}>
-        <h1 style={{ marginBottom: '1rem', fontSize: '1.5rem', textAlign: 'center' }}>Register</h1>
+    <main style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(135deg, #0f172a, #1e293b)' }}>
+      <div style={{ background: '#ffffff', padding: '2.5rem 2.25rem', borderRadius: '0.75rem', width: '100%', maxWidth: '420px', boxShadow: '0 20px 40px rgba(15,23,42,0.35)' }}>
+        <h1 style={{ marginBottom: '0.5rem', fontSize: '1.6rem', textAlign: 'center' }}>Create account</h1>
+        <p style={{ marginBottom: '0.5rem', fontSize: '0.9rem', color: '#6b7280', textAlign: 'center' }}>
+          Create your SAMS account to manage attendance and classes.
+        </p>
+        <p style={{ marginBottom: '1.25rem', fontSize: '0.85rem', color: '#9ca3af', textAlign: 'center' }}>
+          Welcome to the attendance system where teachers can record and monitor student attendance efficiently.
+        </p>
         <form onSubmit={handleSubmit}>
-          <div style={{ marginBottom: '1rem' }}>
+          <div style={{ marginBottom: '0.9rem' }}>
             <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.9rem' }}>Full name</label>
             <input
               type="text"
               value={name}
               onChange={e => setName(e.target.value)}
               required
+              placeholder="Enter your full name"
               style={{ width: '100%', padding: '0.5rem 0.75rem', borderRadius: '0.375rem', border: '1px solid #d4d4d4' }}
             />
           </div>
-          <div style={{ marginBottom: '1rem' }}>
+          <div style={{ marginBottom: '0.9rem' }}>
             <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.9rem' }}>Email</label>
             <input
               type="email"
               value={email}
               onChange={e => setEmail(e.target.value)}
               required
+              placeholder="Enter your email address"
               style={{ width: '100%', padding: '0.5rem 0.75rem', borderRadius: '0.375rem', border: '1px solid #d4d4d4' }}
             />
           </div>
@@ -76,6 +84,7 @@ export default function RegisterPage() {
               value={password}
               onChange={e => setPassword(e.target.value)}
               required
+              placeholder="Create a secure password"
               style={{ width: '100%', padding: '0.5rem 0.75rem', borderRadius: '0.375rem', border: '1px solid #d4d4d4' }}
             />
           </div>
@@ -103,7 +112,7 @@ export default function RegisterPage() {
               padding: '0.5rem 0.75rem',
               borderRadius: '0.375rem',
               border: 'none',
-              background: '#16a34a',
+              background: '#2563eb',
               color: '#ffffff',
               fontWeight: 600,
               cursor: 'pointer',
