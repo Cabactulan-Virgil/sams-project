@@ -1,8 +1,9 @@
 import AdminDashboardLayout from '../../components/admin/AdminDashboardLayout';
 import { getUserFromRequest } from '../../lib/auth';
+import prisma from '../../lib/prisma';
 
-export default function AdminDashboard({ user }) {
-  return <AdminDashboardLayout user={user} />;
+export default function AdminDashboard({ user, overview }) {
+  return <AdminDashboardLayout user={user} overview={overview} />;
 }
 
 export async function getServerSideProps({ req }) {
@@ -29,9 +30,20 @@ export async function getServerSideProps({ req }) {
     };
   }
 
+  const [studentCount, teacherCount, classCount] = await Promise.all([
+    prisma.user.count({ where: { role: 'student' } }),
+    prisma.user.count({ where: { role: 'teacher' } }),
+    prisma.classSection.count(),
+  ]);
+
   return {
     props: {
       user,
+      overview: {
+        studentCount,
+        teacherCount,
+        classCount,
+      },
     },
   };
 }

@@ -53,6 +53,12 @@ export default function LoginPage() {
   return (
     <main style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(135deg, #0f172a, #1e293b)' }}>
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '0 1rem' }}>
+        <div style={{ marginBottom: '1.75rem', textAlign: 'center', color: '#e5e7eb' }}>
+          <h1 style={{ fontSize: '1.9rem', marginBottom: '0.25rem' }}>Student Attendance Monitoring System</h1>
+          <p style={{ fontSize: '0.95rem', maxWidth: '520px', margin: '0 auto' }}>
+            A web-based attendance system where teachers can record and monitor student attendance efficiently.
+          </p>
+        </div>
         <div style={{ background: '#ffffff', padding: '2.5rem 2.25rem', borderRadius: '0.75rem', width: '100%', maxWidth: '420px', boxShadow: '0 20px 40px rgba(15,23,42,0.35)' }}>
           <h1 style={{ marginBottom: '0.5rem', fontSize: '1.6rem', textAlign: 'center' }}>SAMS Login</h1>
           <p style={{ marginBottom: '1.25rem', fontSize: '0.9rem', color: '#6b7280', textAlign: 'center' }}>
@@ -127,9 +133,6 @@ export default function LoginPage() {
           <a href="/register" style={{ color: '#2563eb', textDecoration: 'underline' }}>Register</a>
         </p>
         </div>
-        <p style={{ marginTop: '1.5rem', fontSize: '0.85rem', color: '#e5e7eb', textAlign: 'center', maxWidth: '480px' }}>
-          Welcome to the attendance system where teachers can record and monitor student attendance efficiently.
-        </p>
       </div>
     </main>
   );

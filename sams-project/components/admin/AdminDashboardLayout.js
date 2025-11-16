@@ -1,11 +1,11 @@
 import { useState } from 'react';
 
-export default function AdminDashboardLayout({ user }) {
+export default function AdminDashboardLayout({ user, overview }) {
   const [activeSection, setActiveSection] = useState('overview');
 
   const containerStyle = {
     minHeight: '100vh',
-    padding: '2rem',
+    padding: '2.5rem 2rem 2rem',
     background: '#e5e7eb',
     fontFamily: 'Arial',
   };
@@ -112,18 +112,18 @@ export default function AdminDashboardLayout({ user }) {
             >
               <div style={{ background: '#ffffff', padding: '1rem', borderRadius: '0.5rem', boxShadow: '0 10px 25px rgba(0,0,0,0.04)' }}>
                 <h2 style={{ fontSize: '1rem', marginBottom: '0.25rem' }}>Total students</h2>
-                <p style={{ fontSize: '1.5rem', fontWeight: 600 }}>—</p>
-                <p style={{ fontSize: '0.8rem', color: '#6b7280' }}>Placeholder for student count</p>
+                <p style={{ fontSize: '1.5rem', fontWeight: 600 }}>{overview?.studentCount ?? '—'}</p>
+                <p style={{ fontSize: '0.8rem', color: '#6b7280' }}>Number of students in the system.</p>
               </div>
               <div style={{ background: '#ffffff', padding: '1rem', borderRadius: '0.5rem', boxShadow: '0 10px 25px rgba(0,0,0,0.04)' }}>
                 <h2 style={{ fontSize: '1rem', marginBottom: '0.25rem' }}>Total teachers</h2>
-                <p style={{ fontSize: '1.5rem', fontWeight: 600 }}>—</p>
-                <p style={{ fontSize: '0.8rem', color: '#6b7280' }}>Placeholder for teacher count</p>
+                <p style={{ fontSize: '1.5rem', fontWeight: 600 }}>{overview?.teacherCount ?? '—'}</p>
+                <p style={{ fontSize: '0.8rem', color: '#6b7280' }}>Number of teachers in the system.</p>
               </div>
               <div style={{ background: '#ffffff', padding: '1rem', borderRadius: '0.5rem', boxShadow: '0 10px 25px rgba(0,0,0,0.04)' }}>
                 <h2 style={{ fontSize: '1rem', marginBottom: '0.25rem' }}>Active classes</h2>
-                <p style={{ fontSize: '1.5rem', fontWeight: 600 }}>—</p>
-                <p style={{ fontSize: '0.8rem', color: '#6b7280' }}>Placeholder for class count</p>
+                <p style={{ fontSize: '1.5rem', fontWeight: 600 }}>{overview?.classCount ?? '—'}</p>
+                <p style={{ fontSize: '0.8rem', color: '#6b7280' }}>Number of classes/sections configured.</p>
               </div>
             </section>
           )}

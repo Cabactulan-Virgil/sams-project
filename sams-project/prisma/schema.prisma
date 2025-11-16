@@ -1,0 +1,79 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           Int      @id @default(autoincrement())
+  name         String
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  role         String
+
+  enrollmentsAsStudent Enrollment[] @relation("StudentEnrollments")
+  enrollmentsAsTeacher Enrollment[] @relation("TeacherEnrollments")
+
+  @@map("users")
+}
+
+model ClassSection {
+  id          Int          @id @default(autoincrement())
+  name        String
+  description String?
+
+  enrollments Enrollment[]
+
+  @@map("classes")
+}
+
+model Subject {
+  id          Int          @id @default(autoincrement())
+  code        String
+  name        String
+  description String?
+
+  enrollments Enrollment[]
+
+  @@map("subjects")
+}
+
+model Enrollment {
+  id         Int        @id @default(autoincrement())
+
+  studentId  Int
+  teacherId  Int
+  subjectId  Int
+  classId    Int
+
+  student    User        @relation("StudentEnrollments", fields: [studentId], references: [id])
+  teacher    User        @relation("TeacherEnrollments", fields: [teacherId], references: [id])
+  subject    Subject     @relation(fields: [subjectId], references: [id])
+  class      ClassSection @relation(fields: [classId], references: [id])
+
+  attendanceRecords Attendance[]
+
+  @@map("enrollment")
+}
+
+model Attendance {
+  id           Int        @id @default(autoincrement())
+  enrollmentId Int
+  date         DateTime
+  status       AttendanceStatus
+  remark       String?
+
+  enrollment   Enrollment @relation(fields: [enrollmentId], references: [id])
+
+  @@unique([enrollmentId, date])
+  @@map("attendance")
+}
+
+enum AttendanceStatus {
+  PRESENT
+  LATE
+  ABSENT
+}
