@@ -16,8 +16,6 @@ export default function AdminDashboard({
   const [activeSection, setActiveSection] = useState('overview');
   const [studentSearch, setStudentSearch] = useState('');
   const [studentSearchDraft, setStudentSearchDraft] = useState('');
-  const [teacherSearch, setTeacherSearch] = useState('');
-  const [teacherSearchDraft, setTeacherSearchDraft] = useState('');
   const [teacherYearFilter, setTeacherYearFilter] = useState('');
   const [teacherDepartmentFilter, setTeacherDepartmentFilter] = useState('');
   const [subjectSearch, setSubjectSearch] = useState('');
@@ -292,13 +290,6 @@ export default function AdminDashboard({
       setStudentSearchDraft('');
     }
   }, [studentSearch, filteredStudentUsers.length, studentUsers.length]);
-
-  useEffect(() => {
-    if (teacherSearch && filteredTeacherUsers.length === 0 && teacherUsers.length > 0) {
-      setTeacherSearch('');
-      setTeacherSearchDraft('');
-    }
-  }, [teacherSearch, filteredTeacherUsers.length, teacherUsers.length]);
 
   useEffect(() => {
     if (subjectSearch && filteredSubjects.length === 0 && subjectList.length > 0) {
@@ -1318,7 +1309,7 @@ export default function AdminDashboard({
                   <p className="text-sm text-gray-600">Manage teacher accounts and assignments.</p>
                 </div>
                 <div className="flex flex-col md:flex-row md:items-center md:justify-end gap-2 w-full md:w-auto">
-                  <div className="flex flex-row gap-2 w-full md:w-auto">
+                  <div className="flex flex-row flex-wrap items-center gap-2 w-full md:w-auto">
                     <select
                       value={teacherDepartmentFilter}
                       onChange={(e) => setTeacherDepartmentFilter(e.target.value)}
@@ -1331,23 +1322,23 @@ export default function AdminDashboard({
                         </option>
                       ))}
                     </select>
-                    <input
-                      type="text"
-                      value={teacherSearchDraft}
-                      onChange={(e) => setTeacherSearchDraft(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') setTeacherSearch(teacherSearchDraft);
-                      }}
-                      placeholder="Filter by ID, name, email, course, level"
-                      className="w-full md:w-56 px-3 py-1.5 border border-gray-300 rounded-md text-xs shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setTeacherSearch(teacherSearchDraft)}
-                      className="inline-flex items-center px-3 py-1.5 rounded-md border border-gray-300 bg-white text-xs font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                    <select
+                      value={teacherYearFilter}
+                      onChange={(e) => setTeacherYearFilter(e.target.value)}
+                      className="w-full md:w-32 px-3 py-1.5 border border-gray-300 rounded-md text-xs shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                     >
-                      Filter
-                    </button>
+                      <option value="">All levels</option>
+                      {Array.from(new Set(teacherUsers.map(t => t.teacherLevel).filter(Boolean))).map(level => (
+                        <option key={level} value={level}>
+                          {`Level ${level}`}
+                        </option>
+                      ))}
+                    </select>
+                    {teacherYearFilter && (
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 text-[11px]">
+                        {`Level ${teacherYearFilter}`}
+                      </span>
+                    )}
                   </div>
                   <button
                     type="button"
@@ -1377,8 +1368,8 @@ export default function AdminDashboard({
                         <button
                           type="button"
                           onClick={() => {
-                            setTeacherSearch(course);
-                            setTeacherSearchDraft(course);
+                            setTeacherDepartmentFilter(course);
+                            setTeacherYearFilter('');
                           }}
                           className="inline-flex items-center px-2 py-1 rounded-md bg-white text-[11px] font-medium text-emerald-700 border border-emerald-200 hover:bg-emerald-50"
                         >
@@ -1388,14 +1379,13 @@ export default function AdminDashboard({
                       <div className="flex flex-wrap gap-1 mt-1">
                         {Object.entries(info.levels).map(([level, count]) => {
                           const label = level === 'N/A' ? 'Level N/A' : `Level ${level}`;
-                          const term = `${course} ${level}`;
                           return (
                             <button
                               key={level}
                               type="button"
                               onClick={() => {
-                                setTeacherSearch(term);
-                                setTeacherSearchDraft(term);
+                                setTeacherDepartmentFilter(course);
+                                setTeacherYearFilter(level);
                               }}
                               className="inline-flex items-center px-2 py-0.5 rounded-full bg-white text-[11px] text-emerald-800 border border-emerald-200 hover:bg-emerald-50"
                             >
@@ -1409,60 +1399,88 @@ export default function AdminDashboard({
                   ))}
                 </div>
               )}
-
-              <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white">
-                <table className="min-w-full divide-y divide-gray-200 text-sm">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-4 py-2 text-left text-xs font-semibold text-gray-600">ID</th>
-                      <th className="px-4 py-2 text-left text-xs font-semibold text-gray-600">Name</th>
-                      <th className="px-4 py-2 text-left text-xs font-semibold text-gray-600">Email</th>
-                      <th className="px-4 py-2 text-left text-xs font-semibold text-gray-600">Course Instructor</th>
-                      <th className="px-4 py-2 text-left text-xs font-semibold text-gray-600">Year level</th>
-                      <th className="px-4 py-2 text-center text-xs font-semibold text-gray-600">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-100">
-                    {filteredTeacherUsers.map(t => (
-                      <tr key={t.id} className="hover:bg-gray-50">
-                        <td className="px-4 py-2 text-xs text-gray-500">{t.id}</td>
-                        <td className="px-4 py-2 text-gray-900">{t.name}</td>
-                        <td className="px-4 py-2 text-gray-700">{t.email}</td>
-                        <td className="px-4 py-2 text-gray-700">{t.teacherCourse || 'N/A'}</td>
-                        <td className="px-4 py-2 text-gray-700">{t.teacherLevel || 'N/A'}</td>
-                        <td className="px-4 py-2">
-                          <div className="flex items-center justify-center gap-2">
-                            <button
-                              type="button"
-                              onClick={() => openEditTeacher(t)}
-                              className="inline-flex items-center px-2 py-1 rounded-md border border-gray-300 text-xs text-gray-700 bg-white hover:bg-gray-50"
-                            >
-                              Edit
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleDeleteTeacher(t)}
-                              className="inline-flex items-center px-2 py-1 rounded-md border border-red-200 text-xs text-red-600 bg-red-50 hover:bg-red-100"
-                            >
-                              Delete
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                    {filteredTeacherUsers.length === 0 && (
+              {teacherDepartmentFilter && teacherYearFilter ? (
+                <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white">
+                  <table className="min-w-full divide-y divide-gray-200 text-sm">
+                    <thead className="bg-gray-50">
                       <tr>
-                        <td
-                          colSpan={6}
-                          className="px-4 py-4 text-xs text-center text-gray-400"
-                        >
-                          No teachers found yet.
-                        </td>
+                        <th className="px-4 py-2 text-left text-xs font-semibold text-gray-600">ID</th>
+                        <th className="px-4 py-2 text-left text-xs font-semibold text-gray-600">Course Instructor</th>
+                        <th className="px-4 py-2 text-left text-xs font-semibold text-gray-600">Course Instructor - Subject code</th>
+                        <th className="px-4 py-2 text-left text-xs font-semibold text-gray-600">Description</th>
+                        <th className="px-4 py-2 text-left text-xs font-semibold text-gray-600">Year level</th>
+                        <th className="px-4 py-2 text-center text-xs font-semibold text-gray-600">Actions</th>
                       </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {filteredTeacherUsers.map(t => {
+                        const teacherEnrollments = enrollmentList.filter(e => e.teacherId === t.id && e.subject);
+                        const subjectCodes = [];
+                        const subjectDescriptions = [];
+                        const seenSubjectIds = new Set();
+
+                        teacherEnrollments.forEach(e => {
+                          if (!e.subject || seenSubjectIds.has(e.subjectId)) return;
+                          seenSubjectIds.add(e.subjectId);
+                          if (e.subject.code) subjectCodes.push(e.subject.code);
+                          if (e.subject.name || e.subject.description) {
+                            subjectDescriptions.push(e.subject.name || e.subject.description);
+                          }
+                        });
+
+                        const codesText = subjectCodes.length > 0 ? subjectCodes.join(', ') : '—';
+                        const descText = subjectDescriptions.length > 0 ? subjectDescriptions.join(', ') : '—';
+
+                        return (
+                          <tr key={t.id} className="hover:bg-gray-50">
+                            <td className="px-4 py-2 text-xs text-gray-500">{t.id}</td>
+                            <td className="px-4 py-2 text-gray-900">
+                              <div className="text-xs text-gray-900">{t.name}</div>
+                              <div className="text-[11px] text-gray-500">{t.email}</div>
+                              <div className="text-[11px] text-gray-500">{t.teacherCourse || 'N/A'}</div>
+                            </td>
+                            <td className="px-4 py-2 text-gray-700">{codesText}</td>
+                            <td className="px-4 py-2 text-gray-700">{descText}</td>
+                            <td className="px-4 py-2 text-gray-700">{t.teacherLevel || 'N/A'}</td>
+                            <td className="px-4 py-2">
+                              <div className="flex items-center justify-center gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => openEditTeacher(t)}
+                                  className="inline-flex items-center px-2 py-1 rounded-md border border-gray-300 text-xs text-gray-700 bg-white hover:bg-gray-50"
+                                >
+                                  Edit
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeleteTeacher(t)}
+                                  className="inline-flex items-center px-2 py-1 rounded-md border border-red-200 text-xs text-red-600 bg-red-50 hover:bg-red-100"
+                                >
+                                  Delete
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                      {filteredTeacherUsers.length === 0 && (
+                        <tr>
+                          <td
+                            colSpan={6}
+                            className="px-4 py-4 text-xs text-center text-gray-400"
+                          >
+                            No teachers found yet.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div className="rounded-lg border border-dashed border-gray-300 bg-gray-50 px-3 py-3 text-xs text-gray-500">
+                  Select a department and year level to see detailed course instructor assignments.
+                </div>
+              )}
             </div>
           )}
 
@@ -1937,6 +1955,7 @@ export default function AdminDashboard({
                       type="text"
                       value={newStudentForm.name}
                       onChange={handleNewStudentFormChange}
+                      placeholder="Enter student's full name"
                       className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                     />
                   </div>
@@ -1950,6 +1969,7 @@ export default function AdminDashboard({
                       type="email"
                       value={newStudentForm.email}
                       onChange={handleNewStudentFormChange}
+                      placeholder="Enter student email (e.g. juan@student.com)"
                       className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                     />
                   </div>
@@ -1963,6 +1983,7 @@ export default function AdminDashboard({
                       type="text"
                       value={newStudentForm.studentDepartment}
                       onChange={handleNewStudentFormChange}
+                      placeholder="e.g. BSIT, BSHM, BSCJ"
                       className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                     />
                   </div>
@@ -1976,6 +1997,7 @@ export default function AdminDashboard({
                       type="text"
                       value={newStudentForm.studentYear}
                       onChange={handleNewStudentFormChange}
+                      placeholder="e.g. 1, 2, 3"
                       className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                     />
                   </div>
@@ -2095,6 +2117,7 @@ export default function AdminDashboard({
                       type="text"
                       value={newTeacherForm.name}
                       onChange={handleNewTeacherFormChange}
+                      placeholder="Enter teacher's full name"
                       className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                     />
                   </div>
@@ -2108,6 +2131,7 @@ export default function AdminDashboard({
                       type="email"
                       value={newTeacherForm.email}
                       onChange={handleNewTeacherFormChange}
+                      placeholder="Enter teacher email (e.g. sir.garcia@school.com)"
                       className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                     />
                   </div>
@@ -2121,6 +2145,7 @@ export default function AdminDashboard({
                       type="text"
                       value={newTeacherForm.teacherCourse}
                       onChange={handleNewTeacherFormChange}
+                      placeholder="e.g. Hospitality Management, Information Technology"
                       className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                     />
                   </div>
@@ -2134,6 +2159,7 @@ export default function AdminDashboard({
                       type="text"
                       value={newTeacherForm.teacherLevel}
                       onChange={handleNewTeacherFormChange}
+                      placeholder="e.g. 1, 2, 3"
                       className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                     />
                   </div>
@@ -2226,6 +2252,7 @@ export default function AdminDashboard({
                       type="text"
                       value={newClassForm.name}
                       onChange={handleNewClassFormChange}
+                      placeholder="e.g. BSIT 1-A, BSHM 2-B"
                       className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                     />
                   </div>
@@ -2238,6 +2265,7 @@ export default function AdminDashboard({
                       name="description"
                       value={newClassForm.description}
                       onChange={handleNewClassFormChange}
+                      placeholder="Short description of this class or section"
                       className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                     />
                   </div>
@@ -2343,6 +2371,7 @@ export default function AdminDashboard({
                       type="text"
                       value={newSubjectForm.code}
                       onChange={handleNewSubjectFormChange}
+                      placeholder="e.g. IT101, HM201"
                       className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                     />
                   </div>
@@ -2356,6 +2385,7 @@ export default function AdminDashboard({
                       type="text"
                       value={newSubjectForm.name}
                       onChange={handleNewSubjectFormChange}
+                      placeholder="e.g. Introduction to Information Technology"
                       className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                     />
                   </div>
@@ -2368,6 +2398,7 @@ export default function AdminDashboard({
                       name="description"
                       value={newSubjectForm.description}
                       onChange={handleNewSubjectFormChange}
+                      placeholder="Short description of the subject (topics, focus, etc.)"
                       className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                     />
                   </div>
