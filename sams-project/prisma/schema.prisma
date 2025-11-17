@@ -83,3 +83,51 @@ enum AttendanceStatus {
   LATE
   ABSENT
 }
+
+model ClassSession {
+  id        Int      @id @default(autoincrement())
+  classId   Int
+  subjectId Int?
+  teacherId Int
+  date      DateTime
+  start     DateTime
+  createdAt DateTime @default(now())
+
+  @@map("class_sessions")
+}
+
+model SessionArrival {
+  id           Int      @id @default(autoincrement())
+  sessionId    Int
+  enrollmentId Int
+  arrivalTime  DateTime
+
+  @@map("session_arrivals")
+}
+
+model StudentReport {
+  id        Int      @id @default(autoincrement())
+  studentId Int
+  classId   Int?
+  subjectId Int?
+  teacherId Int?
+  date      DateTime
+  text      String
+  status    AttendanceStatus?
+  createdAt DateTime @default(now())
+
+  @@map("student_reports")
+}
+
+model Notification {
+  id        Int      @id @default(autoincrement())
+  message   String
+  studentId Int?
+  teacherId Int?
+  classId   Int?
+  subjectId Int?
+  reportId  Int?
+  createdAt DateTime @default(now())
+
+  @@map("notifications")
+}

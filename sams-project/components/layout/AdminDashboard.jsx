@@ -11,18 +11,23 @@ export default function AdminDashboard({
   subjects = [],
   subjectStudentCounts = {},
   subjectFilterTags = {},
+  enrollments = [],
 }) {
   const [activeSection, setActiveSection] = useState('overview');
   const [studentSearch, setStudentSearch] = useState('');
   const [studentSearchDraft, setStudentSearchDraft] = useState('');
   const [teacherSearch, setTeacherSearch] = useState('');
   const [teacherSearchDraft, setTeacherSearchDraft] = useState('');
+  const [teacherYearFilter, setTeacherYearFilter] = useState('');
+  const [teacherDepartmentFilter, setTeacherDepartmentFilter] = useState('');
   const [subjectSearch, setSubjectSearch] = useState('');
   const [subjectSearchDraft, setSubjectSearchDraft] = useState('');
 
   const [userList, setUserList] = useState(users);
   const [classList, setClassList] = useState(classes);
   const [subjectList, setSubjectList] = useState(subjects);
+  const [enrollmentList, setEnrollmentList] = useState(enrollments);
+  const [enrollmentStudentFilter, setEnrollmentStudentFilter] = useState('');
 
   useEffect(() => {
     setUserList(users);
@@ -35,6 +40,10 @@ export default function AdminDashboard({
   useEffect(() => {
     setSubjectList(subjects);
   }, [subjects]);
+
+  useEffect(() => {
+    setEnrollmentList(enrollments);
+  }, [enrollments]);
 
   const studentUsers = userList.filter(u => u.role === 'student');
   const teacherUsers = userList.filter(u => u.role === 'teacher');
@@ -57,21 +66,37 @@ export default function AdminDashboard({
   });
 
   const filteredTeacherUsers = teacherUsers.filter(t => {
-    if (!teacherSearch) return true;
-    const terms = teacherSearch
-      .toLowerCase()
-      .split(/\s+/)
-      .filter(Boolean);
-    if (terms.length === 0) return true;
+    // filter by selected department (course)
+    if (teacherDepartmentFilter) {
+      const course = (t.teacherCourse || '').toLowerCase();
+      if (!course.includes(teacherDepartmentFilter.toLowerCase())) {
+        return false;
+      }
+    }
 
-    return terms.every(term =>
-      String(t.id).includes(term) ||
-      (t.name && t.name.toLowerCase().includes(term)) ||
-      (t.email && t.email.toLowerCase().includes(term)) ||
-      (t.teacherCourse && t.teacherCourse.toLowerCase().includes(term)) ||
-      (t.teacherLevel && t.teacherLevel.toLowerCase().includes(term))
-    );
+    // filter by selected year level
+    if (teacherYearFilter) {
+      const level = (t.teacherLevel || '').toLowerCase();
+      if (!level.includes(teacherYearFilter.toLowerCase())) {
+        return false;
+      }
+    }
+
+    return true;
   });
+
+  // Map used for teacher cards: group by teacher name, listing year levels they teach
+  const teacherNameLevelMap = filteredTeacherUsers.reduce((acc, t) => {
+    const name = t.name || 'Unnamed teacher';
+    const level = t.teacherLevel || 'N/A';
+    if (!acc[name]) {
+      acc[name] = { teacher: t, levels: new Set() };
+    }
+    if (level) {
+      acc[name].levels.add(level);
+    }
+    return acc;
+  }, {});
 
   const filteredSubjects = subjectList.filter(s => {
     if (!subjectSearch) return true;
@@ -95,6 +120,67 @@ export default function AdminDashboard({
     );
   });
 
+  const filteredEnrollmentStudents = studentUsers.filter(s => {
+    if (!enrollmentStudentFilter) return true;
+    const term = enrollmentStudentFilter.toLowerCase();
+    const dept = (s.studentDepartment || '').toLowerCase();
+    const year = s.studentYear ? String(s.studentYear).toLowerCase() : '';
+
+    return (
+      dept.includes(term) ||
+      `${dept} ${year}`.trim().includes(term)
+    );
+  });
+
+  const filteredEnrollmentTeachers = teacherUsers.filter(t => {
+    if (!enrollmentStudentFilter) return true;
+    const term = enrollmentStudentFilter.toLowerCase();
+    const course = (t.teacherCourse || '').toLowerCase();
+    const level = t.teacherLevel ? String(t.teacherLevel).toLowerCase() : '';
+
+    return (
+      course.includes(term) ||
+      `${course} ${level}`.trim().includes(term)
+    );
+  });
+
+  const filteredEnrollmentSubjects = subjectList.filter(s => {
+    if (!enrollmentStudentFilter) return true;
+    if (!subjectFilterTags || !subjectFilterTags[s.id]) return true;
+
+    const tags = subjectFilterTags[s.id];
+    const departments = (tags.departments || [])
+      .map(d => (d ? String(d).toLowerCase() : ''))
+      .filter(Boolean);
+    const years = (tags.years || [])
+      .map(y => (y !== undefined && y !== null ? String(y).toLowerCase() : ''))
+      .filter(Boolean);
+
+    const parts = enrollmentStudentFilter
+      .toLowerCase()
+      .split(/\s+/)
+      .filter(Boolean);
+    const deptTerm = parts[0] || '';
+    const yearTerm = parts[1] || '';
+
+    if (deptTerm && !departments.some(d => d.includes(deptTerm))) return false;
+    if (yearTerm && !years.some(y => y.includes(yearTerm))) return false;
+
+    return true;
+  });
+
+  const filteredEnrollmentList = enrollmentList.filter(e => {
+    if (!enrollmentStudentFilter) return true;
+    const term = enrollmentStudentFilter.toLowerCase();
+    const dept = (e.student?.studentDepartment || '').toLowerCase();
+    const year = e.student?.studentYear ? String(e.student.studentYear).toLowerCase() : '';
+
+    return (
+      dept.includes(term) ||
+      `${dept} ${year}`.trim().includes(term)
+    );
+  });
+
   const studentDepartmentYearMap = studentUsers.reduce((acc, s) => {
     const dept = s.studentDepartment || 'Unassigned';
     const year = s.studentYear || 'N/A';
@@ -106,7 +192,18 @@ export default function AdminDashboard({
     return acc;
   }, {});
 
-  const teacherCourseLevelMap = teacherUsers.reduce((acc, t) => {
+  const enrollmentDepartmentYearMap = enrollmentList.reduce((acc, e) => {
+    const dept = e.student?.studentDepartment || 'Unassigned';
+    const year = e.student?.studentYear || 'N/A';
+    if (!acc[dept]) {
+      acc[dept] = { total: 0, years: {} };
+    }
+    acc[dept].total += 1;
+    acc[dept].years[year] = (acc[dept].years[year] || 0) + 1;
+    return acc;
+  }, {});
+
+  const teacherCourseLevelMap = filteredTeacherUsers.reduce((acc, t) => {
     const course = t.teacherCourse || 'Unassigned';
     const level = t.teacherLevel || 'N/A';
     if (!acc[course]) {
@@ -180,6 +277,15 @@ export default function AdminDashboard({
   });
   const [subjectSaving, setSubjectSaving] = useState(false);
 
+  const [addingEnrollment, setAddingEnrollment] = useState(false);
+  const [enrollmentForm, setEnrollmentForm] = useState({
+    studentId: '',
+    teacherId: '',
+    subjectId: '',
+    classId: '',
+  });
+  const [enrollmentSaving, setEnrollmentSaving] = useState(false);
+
   useEffect(() => {
     if (studentSearch && filteredStudentUsers.length === 0 && studentUsers.length > 0) {
       setStudentSearch('');
@@ -209,6 +315,59 @@ export default function AdminDashboard({
       studentDepartment: student.studentDepartment || '',
       studentYear: student.studentYear || '',
     });
+  };
+
+  const openAddEnrollment = () => {
+    setEnrollmentForm({ studentId: '', teacherId: '', subjectId: '', classId: '' });
+    setAddingEnrollment(true);
+  };
+
+  const closeAddEnrollment = () => {
+    setAddingEnrollment(false);
+    setEnrollmentSaving(false);
+  };
+
+  const handleEnrollmentFormChange = (e) => {
+    const { name, value } = e.target;
+    setEnrollmentForm(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleCreateEnrollment = async () => {
+    const { studentId, teacherId, subjectId, classId } = enrollmentForm;
+    if (!studentId || !teacherId || !subjectId || !classId) {
+      alert('Please select student, teacher, subject, and class.');
+      return;
+    }
+
+    setEnrollmentSaving(true);
+    try {
+      const res = await fetch('/api/admin/enrollments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          studentId: Number(studentId),
+          teacherId: Number(teacherId),
+          subjectId: Number(subjectId),
+          classId: Number(classId),
+        }),
+      });
+
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.enrollment) {
+        alert(data.message || 'Failed to create enrollment');
+        setEnrollmentSaving(false);
+        return;
+      }
+
+      setEnrollmentList(prev => [...prev, data.enrollment]);
+      alert('Enrollment created successfully');
+      setEnrollmentSaving(false);
+      closeAddEnrollment();
+    } catch (error) {
+      console.error('Create enrollment error', error);
+      alert('Failed to create enrollment');
+      setEnrollmentSaving(false);
+    }
   };
 
   const closeEditStudent = () => {
@@ -794,9 +953,9 @@ export default function AdminDashboard({
                 </div>
               </div>
 
-              {Object.keys(studentDepartmentYearMap).length > 0 && (
+              {Object.keys(enrollmentDepartmentYearMap).length > 0 && (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {Object.entries(studentDepartmentYearMap).map(([dept, info]) => (
+                  {Object.entries(enrollmentDepartmentYearMap).map(([dept, info]) => (
                     <div
                       key={dept}
                       className="rounded-lg border border-blue-100 bg-blue-50/70 px-3 py-2 text-xs flex flex-col gap-1"
@@ -901,6 +1060,255 @@ export default function AdminDashboard({
               </div>
             </div>
           )}
+          {addingEnrollment && (
+            <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40">
+              <div className="w-full max-w-sm rounded-lg bg-white shadow-xl p-4 sm:p-5">
+                <h3 className="text-sm font-semibold text-gray-900 mb-3">Add enrollment</h3>
+                <div className="space-y-3 mb-4">
+                  <div>
+                    <label htmlFor="enrollment-student" className="block text-xs font-medium text-gray-700 mb-1">
+                      Student
+                    </label>
+                    <select
+                      id="enrollment-student"
+                      name="studentId"
+                      value={enrollmentForm.studentId}
+                      onChange={handleEnrollmentFormChange}
+                      className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    >
+                      <option value="">Select a student</option>
+                      {filteredEnrollmentStudents.map(s => (
+                        <option key={s.id} value={s.id}>
+                          {s.id} - {s.name} ({s.email})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label htmlFor="enrollment-teacher" className="block text-xs font-medium text-gray-700 mb-1">
+                      Teacher
+                    </label>
+                    <select
+                      id="enrollment-teacher"
+                      name="teacherId"
+                      value={enrollmentForm.teacherId}
+                      onChange={handleEnrollmentFormChange}
+                      className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    >
+                      <option value="">Select a teacher</option>
+                      {filteredEnrollmentTeachers.map(t => (
+                        <option key={t.id} value={t.id}>
+                          {t.id} - {t.name} ({t.email})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label htmlFor="enrollment-subject" className="block text-xs font-medium text-gray-700 mb-1">
+                      Subject
+                    </label>
+                    <select
+                      id="enrollment-subject"
+                      name="subjectId"
+                      value={enrollmentForm.subjectId}
+                      onChange={handleEnrollmentFormChange}
+                      className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    >
+                      <option value="">Select a subject</option>
+                      {filteredEnrollmentSubjects.map(s => (
+                        <option key={s.id} value={s.id}>
+                          {s.id} - {s.code || ''} {s.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label htmlFor="enrollment-class" className="block text-xs font-medium text-gray-700 mb-1">
+                      Class / Section
+                    </label>
+                    <select
+                      id="enrollment-class"
+                      name="classId"
+                      value={enrollmentForm.classId}
+                      onChange={handleEnrollmentFormChange}
+                      className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    >
+                      <option value="">Select a class</option>
+                      {classList.map(c => (
+                        <option key={c.id} value={c.id}>
+                          {c.id} - {c.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+                <div className="flex justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={closeAddEnrollment}
+                    className="inline-flex items-center px-3 py-1.5 rounded-md border border-gray-300 text-xs font-medium text-gray-700 bg-white hover:bg-gray-50"
+                    disabled={enrollmentSaving}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleCreateEnrollment}
+                    disabled={enrollmentSaving}
+                    className="inline-flex items-center px-3 py-1.5 rounded-md border border-blue-600 text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-60"
+                  >
+                    {enrollmentSaving ? 'Saving...' : 'Create enrollment'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {activeSection === 'enrollments' && (
+            <div className="space-y-4">
+              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                <div>
+                  <h2 className="text-lg font-semibold">Enrollments</h2>
+                  <p className="text-sm text-gray-600">
+                    Links students to classes, subjects, and teachers.
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={openAddEnrollment}
+                    className="inline-flex items-center px-3 py-1.5 rounded-md bg-blue-600 text-white text-xs font-medium shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                  >
+                    Add enrollment
+                  </button>
+                </div>
+              </div>
+
+              {Object.keys(studentDepartmentYearMap).length > 0 && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {Object.entries(studentDepartmentYearMap).map(([dept, info]) => (
+                    <div
+                      key={dept}
+                      className="rounded-lg border border-blue-100 bg-blue-50/70 px-3 py-2 text-xs flex flex-col gap-1"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <div>
+                          <p className="text-[11px] font-semibold text-blue-800 uppercase tracking-wide">
+                            {dept}
+                          </p>
+                          <p className="text-[11px] text-blue-900/80">
+                            {info.total} student{info.total === 1 ? '' : 's'}
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEnrollmentStudentFilter(dept);
+                          }}
+                          className="inline-flex items-center px-2 py-1 rounded-md bg-white text-[11px] font-medium text-blue-700 border border-blue-200 hover:bg-blue-50"
+                        >
+                          Filter
+                        </button>
+                      </div>
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {Object.entries(info.years).map(([year, count]) => {
+                          const label = year === 'N/A' ? 'Year N/A' : `Year ${year}`;
+                          const term = `${dept} ${year}`;
+                          return (
+                            <button
+                              key={year}
+                              type="button"
+                              onClick={() => {
+                                setEnrollmentStudentFilter(term);
+                              }}
+                              className="inline-flex items-center px-2 py-0.5 rounded-full bg-white text-[11px] text-blue-800 border border-blue-200 hover:bg-blue-50"
+                            >
+                              {label}
+                              <span className="ml-1 text-[10px] text-blue-600">({count})</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white">
+                <table className="min-w-full divide-y divide-gray-200 text-sm">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-4 py-2 text-left text-xs font-semibold text-gray-600">Enrollment ID</th>
+                      <th className="px-4 py-2 text-left text-xs font-semibold text-gray-600">Class</th>
+                      <th className="px-4 py-2 text-left text-xs font-semibold text-gray-600">Subject</th>
+                      <th className="px-4 py-2 text-left text-xs font-semibold text-gray-600">Student</th>
+                      <th className="px-4 py-2 text-left text-xs font-semibold text-gray-600">Year level</th>
+                      <th className="px-4 py-2 text-left text-xs font-semibold text-gray-600">Class instructor</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {filteredEnrollmentList && filteredEnrollmentList.length > 0 ? (
+                      filteredEnrollmentList.map(row => (
+                        <tr key={row.id} className="hover:bg-gray-50">
+                          <td className="px-4 py-2 text-xs text-gray-500">{row.id}</td>
+                          <td className="px-4 py-2 text-sm text-gray-900">
+                            <div className="text-xs text-gray-900">
+                              {row.class?.name || '—'}
+                            </div>
+                            <div className="text-[11px] text-gray-500">
+                              classId: {row.classId}
+                            </div>
+                          </td>
+                          <td className="px-4 py-2 text-sm text-gray-900">
+                            <div className="text-xs text-gray-900">
+                              {row.subject ? `${row.subject.code} - ${row.subject.name}` : '—'}
+                            </div>
+                            <div className="text-[11px] text-gray-500">
+                              subjectId: {row.subjectId}
+                            </div>
+                          </td>
+                          <td className="px-4 py-2 text-sm text-gray-900">
+                            <div className="text-xs text-gray-900">
+                              {row.student?.name || '—'}
+                            </div>
+                            <div className="text-[11px] text-gray-500">
+                              {row.student?.email || ''}
+                            </div>
+                            <div className="text-[11px] text-gray-500">
+                              studentId: {row.studentId}
+                            </div>
+                          </td>
+                          <td className="px-4 py-2 text-sm text-gray-900">
+                            <div className="text-xs text-gray-900">{row.student?.studentYear || 'N/A'}</div>
+                          </td>
+                          <td className="px-4 py-2 text-sm text-gray-900">
+                            <div className="text-xs text-gray-900">
+                              {row.teacher?.name || '—'}
+                            </div>
+                            <div className="text-[11px] text-gray-500">
+                              {row.teacher?.email || ''}
+                            </div>
+                            <div className="text-[11px] text-gray-500">
+                              teacherId: {row.teacherId}
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td
+                          colSpan={5}
+                          className="px-4 py-4 text-xs text-center text-gray-400"
+                        >
+                          No enrollments found yet.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
 
           {activeSection === 'teachers' && (
             <div className="space-y-4">
@@ -910,14 +1318,19 @@ export default function AdminDashboard({
                   <p className="text-sm text-gray-600">Manage teacher accounts and assignments.</p>
                 </div>
                 <div className="flex flex-col md:flex-row md:items-center md:justify-end gap-2 w-full md:w-auto">
-                  <button
-                    type="button"
-                    onClick={openAddTeacher}
-                    className="inline-flex items-center px-3 py-1.5 rounded-md bg-blue-600 text-white text-xs font-medium shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                  >
-                    Add teacher
-                  </button>
                   <div className="flex flex-row gap-2 w-full md:w-auto">
+                    <select
+                      value={teacherDepartmentFilter}
+                      onChange={(e) => setTeacherDepartmentFilter(e.target.value)}
+                      className="w-full md:w-40 px-3 py-1.5 border border-gray-300 rounded-md text-xs shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    >
+                      <option value="">All departments</option>
+                      {Array.from(new Set(teacherUsers.map(t => t.teacherCourse).filter(Boolean))).map(course => (
+                        <option key={course} value={course}>
+                          {course}
+                        </option>
+                      ))}
+                    </select>
                     <input
                       type="text"
                       value={teacherSearchDraft}
@@ -936,6 +1349,13 @@ export default function AdminDashboard({
                       Filter
                     </button>
                   </div>
+                  <button
+                    type="button"
+                    onClick={openAddTeacher}
+                    className="inline-flex items-center px-3 py-1.5 rounded-md bg-blue-600 text-white text-xs font-medium shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                  >
+                    Add teacher
+                  </button>
                 </div>
               </div>
               {Object.keys(teacherCourseLevelMap).length > 0 && (
@@ -1221,6 +1641,7 @@ export default function AdminDashboard({
                       <th className="px-4 py-2 text-left text-xs font-semibold text-gray-600">Code</th>
                       <th className="px-4 py-2 text-left text-xs font-semibold text-gray-600">Name</th>
                       <th className="px-4 py-2 text-left text-xs font-semibold text-gray-600">Description</th>
+                      <th className="px-4 py-2 text-left text-xs font-semibold text-gray-600">Timeframe</th>
                       <th className="px-4 py-2 text-center text-xs font-semibold text-gray-600">Actions</th>
                     </tr>
                   </thead>
@@ -1231,6 +1652,7 @@ export default function AdminDashboard({
                         <td className="px-4 py-2 text-gray-900">{s.code || '—'}</td>
                         <td className="px-4 py-2 text-gray-900">{s.name}</td>
                         <td className="px-4 py-2 text-gray-700">{s.description || '—'}</td>
+                        <td className="px-4 py-2 text-gray-700">2025-2026</td>
                         <td className="px-4 py-2">
                           <div className="flex items-center justify-center gap-2">
                             <button

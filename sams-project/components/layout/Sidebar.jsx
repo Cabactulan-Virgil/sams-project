@@ -1,5 +1,5 @@
 export default function Sidebar({ activeSection, onSelect }) {
-  const sections = ['overview', 'students', 'teachers', 'classes', 'subjects', 'attendance', 'reports', 'notifications'];
+  const sections = ['overview', 'students', 'teachers', 'classes', 'subjects', 'enrollments', 'attendance', 'reports', 'notifications'];
 
   return (
     <aside className="w-64 bg-gray-200 p-4 rounded-lg">

@@ -2,7 +2,16 @@ import AdminDashboard from '../../components/layout/AdminDashboard';
 import { getUserFromRequest } from '../../lib/auth';
 import prisma from '../../lib/prisma';
 
-export default function AdminPage({ user, overview, users, classes, subjects, subjectStudentCounts, subjectFilterTags }) {
+export default function AdminPage({
+  user,
+  overview,
+  users,
+  classes,
+  subjects,
+  subjectStudentCounts,
+  subjectFilterTags,
+  enrollments,
+}) {
   return (
     <AdminDashboard
       user={user}
@@ -12,6 +21,7 @@ export default function AdminPage({ user, overview, users, classes, subjects, su
       subjects={subjects}
       subjectStudentCounts={subjectStudentCounts}
       subjectFilterTags={subjectFilterTags}
+      enrollments={enrollments}
     />
   );
 }
@@ -32,14 +42,31 @@ export async function getServerSideProps({ req }) {
     prisma.enrollment.findMany({
       select: {
         id: true,
-        subject: {
-          select: { id: true, name: true },
-        },
+        studentId: true,
+        teacherId: true,
+        subjectId: true,
+        classId: true,
         student: {
           select: {
+            id: true,
+            name: true,
+            email: true,
             studentDepartment: true,
             studentYear: true,
           },
+        },
+        teacher: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
+        subject: {
+          select: { id: true, code: true, name: true },
+        },
+        class: {
+          select: { id: true, name: true },
         },
       },
     }),
@@ -99,6 +126,7 @@ export async function getServerSideProps({ req }) {
       subjects: subjectRows,
       subjectStudentCounts,
       subjectFilterTags,
+      enrollments: enrollmentRows,
     },
   };
 }

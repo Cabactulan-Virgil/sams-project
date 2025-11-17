@@ -1,9 +1,9 @@
-import TeacherDashboardLayout from '../../components/teacher/TeacherDashboardLayout';
+import TeacherDashboard from '../../components/teacher/TeacherDashboard';
 import { getUserFromRequest } from '../../lib/auth';
 import prisma from '../../lib/prisma';
 
 export default function TeacherPage({ user, classes, subjects, students }) {
-  return <TeacherDashboardLayout user={user} classes={classes} subjects={subjects} students={students} />;
+  return <TeacherDashboard user={user} classes={classes} subjects={subjects} students={students} />;
 }
 
 export async function getServerSideProps({ req }) {

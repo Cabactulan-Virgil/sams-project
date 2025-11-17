@@ -168,31 +168,43 @@ export default function StudentDashboardLayout({ user, summary }) {
                 boxShadow: '0 10px 25px rgba(0,0,0,0.04)',
               }}
             >
-              <h2 style={{ fontSize: '1.1rem', marginBottom: '0.5rem' }}>Attendance summary</h2>
-              <p style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '0.5rem' }}>
-                View your total presents, lates, and absences and your attendance percentage.
+              <h2 style={{ fontSize: '1.1rem', marginBottom: '0.5rem' }}>Attendance</h2>
+              <p style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '0.75rem' }}>
+                Here is your overall attendance summary across your enrolled classes.
               </p>
-              <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap', marginBottom: '0.75rem' }}>
-                <div>
-                  <p style={{ fontSize: '0.8rem', color: '#6b7280' }}>Present</p>
-                  <p style={{ fontSize: '1.1rem', fontWeight: 600 }}>{summary?.presentCount ?? 0}</p>
-                </div>
-                <div>
-                  <p style={{ fontSize: '0.8rem', color: '#6b7280' }}>Late</p>
-                  <p style={{ fontSize: '1.1rem', fontWeight: 600 }}>{summary?.lateCount ?? 0}</p>
-                </div>
-                <div>
-                  <p style={{ fontSize: '0.8rem', color: '#6b7280' }}>Absent</p>
-                  <p style={{ fontSize: '1.1rem', fontWeight: 600 }}>{summary?.absentCount ?? 0}</p>
-                </div>
-                <div>
-                  <p style={{ fontSize: '0.8rem', color: '#6b7280' }}>Attendance rate</p>
-                  <p style={{ fontSize: '1.1rem', fontWeight: 600 }}>
-                    {summary?.attendancePercentage != null ? `${summary.attendancePercentage}%` : '—'}
-                  </p>
-                </div>
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+                  <thead>
+                    <tr style={{ background: '#f3f4f6' }}>
+                      <th style={{ textAlign: 'left', padding: '0.5rem', borderBottom: '1px solid #e5e7eb' }}>Student</th>
+                      <th style={{ textAlign: 'left', padding: '0.5rem', borderBottom: '1px solid #e5e7eb' }}>Email</th>
+                      <th style={{ textAlign: 'center', padding: '0.5rem', borderBottom: '1px solid #e5e7eb' }}>Present</th>
+                      <th style={{ textAlign: 'center', padding: '0.5rem', borderBottom: '1px solid #e5e7eb' }}>Late</th>
+                      <th style={{ textAlign: 'center', padding: '0.5rem', borderBottom: '1px solid #e5e7eb' }}>Absent</th>
+                      <th style={{ textAlign: 'center', padding: '0.5rem', borderBottom: '1px solid #e5e7eb' }}>Attendance %</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td style={{ padding: '0.5rem', borderBottom: '1px solid #f3f4f6' }}>{user.name}</td>
+                      <td style={{ padding: '0.5rem', borderBottom: '1px solid #f3f4f6' }}>{user.email}</td>
+                      <td style={{ padding: '0.5rem', borderBottom: '1px solid #f3f4f6', textAlign: 'center' }}>
+                        {summary?.presentCount ?? 0}
+                      </td>
+                      <td style={{ padding: '0.5rem', borderBottom: '1px solid #f3f4f6', textAlign: 'center' }}>
+                        {summary?.lateCount ?? 0}
+                      </td>
+                      <td style={{ padding: '0.5rem', borderBottom: '1px solid #f3f4f6', textAlign: 'center' }}>
+                        {summary?.absentCount ?? 0}
+                      </td>
+                      <td style={{ padding: '0.5rem', borderBottom: '1px solid #f3f4f6', textAlign: 'center' }}>
+                        {summary?.attendancePercentage != null ? `${summary.attendancePercentage}%` : '—'}
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
               </div>
-              <p style={{ fontSize: '0.8rem', color: '#9ca3af' }}>
+              <p style={{ fontSize: '0.8rem', color: '#9ca3af', marginTop: '0.75rem' }}>
                 Summary is based on all recorded attendance entries for your enrolled classes.
               </p>
             </section>

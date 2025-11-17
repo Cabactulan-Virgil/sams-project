@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 export default function TeacherDashboardLayout({ user, classes = [], subjects = [] }) {
   const [activeSection, setActiveSection] = useState('overview');
@@ -18,6 +18,16 @@ export default function TeacherDashboardLayout({ user, classes = [], subjects = 
   const [attendanceSaving, setAttendanceSaving] = useState(false);
   const [attendanceError, setAttendanceError] = useState('');
   const [attendanceSuccess, setAttendanceSuccess] = useState('');
+
+  const [sessionActive, setSessionActive] = useState(false);
+  const [sessionStartTime, setSessionStartTime] = useState(null);
+  const [sessionElapsedMinutes, setSessionElapsedMinutes] = useState(0);
+  const [sessionFlags, setSessionFlags] = useState({
+    warned13: false,
+    markedLate: false,
+    warned28: false,
+    markedAbsent: false,
+  });
 
   const [studentsSearch, setStudentsSearch] = useState('');
   const [studentsLoading, setStudentsLoading] = useState(false);
@@ -153,6 +163,94 @@ export default function TeacherDashboardLayout({ user, classes = [], subjects = 
       setAttendanceSaving(false);
     }
   }
+
+  function autoMarkStatus(status) {
+    setAttendanceStatus(prev => {
+      const next = { ...prev };
+      attendanceStudents.forEach(s => {
+        if (!next[s.enrollmentId]) {
+          next[s.enrollmentId] = status;
+        }
+      });
+      return next;
+    });
+  }
+
+  function recordArrival(enrollmentId) {
+    if (!attendanceStudents.length) return;
+
+    if (!sessionActive || !sessionStartTime) {
+      handleStatusChange(enrollmentId, 'PRESENT');
+      return;
+    }
+
+    const now = new Date();
+    const elapsed = Math.floor((now - sessionStartTime) / 60000);
+    let status = 'PRESENT';
+    if (elapsed > 30) status = 'ABSENT';
+    else if (elapsed > 15) status = 'LATE';
+    handleStatusChange(enrollmentId, status);
+  }
+
+  function handleStartSession() {
+    if (!attendanceStudents.length) {
+      setAttendanceError('Load students before starting a session.');
+      return;
+    }
+    setSessionActive(true);
+    setSessionStartTime(new Date());
+    setSessionElapsedMinutes(0);
+    setSessionFlags({ warned13: false, markedLate: false, warned28: false, markedAbsent: false });
+  }
+
+  function handleEndSession() {
+    setSessionActive(false);
+    setSessionStartTime(null);
+    setSessionElapsedMinutes(0);
+    setSessionFlags({ warned13: false, markedLate: false, warned28: false, markedAbsent: false });
+  }
+
+  useEffect(() => {
+    if (!sessionActive || !sessionStartTime) return;
+
+    const intervalId = setInterval(() => {
+      const now = new Date();
+      const elapsed = Math.floor((now - sessionStartTime) / 60000);
+      setSessionElapsedMinutes(elapsed);
+
+      setSessionFlags(prev => {
+        const next = { ...prev };
+
+        if (elapsed >= 13 && !next.warned13) {
+          next.warned13 = true;
+          if (typeof window !== 'undefined') {
+            window.alert('Warning: Students arriving after 15 minutes will be marked Late.');
+          }
+        }
+
+        if (elapsed >= 15 && !next.markedLate) {
+          next.markedLate = true;
+          autoMarkStatus('LATE');
+        }
+
+        if (elapsed >= 28 && !next.warned28) {
+          next.warned28 = true;
+          if (typeof window !== 'undefined') {
+            window.alert('Reminder: Students arriving after 30 minutes will be marked Absent.');
+          }
+        }
+
+        if (elapsed >= 30 && !next.markedAbsent) {
+          next.markedAbsent = true;
+          autoMarkStatus('ABSENT');
+        }
+
+        return next;
+      });
+    }, 1000);
+
+    return () => clearInterval(intervalId);
+  }, [sessionActive, sessionStartTime]);
 
   async function handleSearchStudents(e) {
     e.preventDefault();
@@ -576,6 +674,53 @@ export default function TeacherDashboardLayout({ user, classes = [], subjects = 
                       <span style={{ marginRight: '0.5rem' }}>Late: {sessionSummary.late}</span>
                       <span style={{ marginRight: '0.5rem' }}>Absent: {sessionSummary.absent}</span>
                       <span>Unmarked: {sessionSummary.unmarked}</span>
+                      <div
+                        style={{
+                          marginTop: '0.25rem',
+                          display: 'flex',
+                          flexWrap: 'wrap',
+                          gap: '0.5rem',
+                          alignItems: 'center',
+                        }}
+                      >
+                        <span style={{ fontSize: '0.8rem', color: '#374151' }}>
+                          Session: {sessionActive ? 'In progress' : 'Not started'}
+                          {sessionActive && ` · ${sessionElapsedMinutes} min`}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={handleStartSession}
+                          disabled={sessionActive || !attendanceStudents.length}
+                          style={{
+                            padding: '0.25rem 0.6rem',
+                            borderRadius: '999px',
+                            border: '1px solid #2563eb',
+                            background: sessionActive ? '#e5e7eb' : '#2563eb',
+                            color: sessionActive ? '#6b7280' : '#ffffff',
+                            fontSize: '0.75rem',
+                            cursor: sessionActive ? 'default' : 'pointer',
+                          }}
+                        >
+                          Start session
+                        </button>
+                        {sessionActive && (
+                          <button
+                            type="button"
+                            onClick={handleEndSession}
+                            style={{
+                              padding: '0.25rem 0.6rem',
+                              borderRadius: '999px',
+                              border: '1px solid #6b7280',
+                              background: '#ffffff',
+                              color: '#374151',
+                              fontSize: '0.75rem',
+                              cursor: 'pointer',
+                            }}
+                          >
+                            End session
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </div>
 
@@ -723,6 +868,23 @@ export default function TeacherDashboardLayout({ user, classes = [], subjects = 
                                     {option}
                                   </button>
                                 ))}
+                              </div>
+                              <div style={{ marginTop: '0.35rem' }}>
+                                <button
+                                  type="button"
+                                  onClick={() => recordArrival(student.enrollmentId)}
+                                  style={{
+                                    border: '1px solid #d1d5db',
+                                    borderRadius: '999px',
+                                    padding: '0.2rem 0.6rem',
+                                    fontSize: '0.75rem',
+                                    background: '#ffffff',
+                                    color: '#374151',
+                                    cursor: 'pointer',
+                                  }}
+                                >
+                                  Record arrival
+                                </button>
                               </div>
                             </td>
                           </tr>
