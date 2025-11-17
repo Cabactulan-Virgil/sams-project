@@ -10,15 +10,19 @@ export default function AdminDashboard({
   classes = [],
   subjects = [],
   subjectStudentCounts = {},
+  subjectFilterTags = {},
 }) {
   const [activeSection, setActiveSection] = useState('overview');
   const [studentSearch, setStudentSearch] = useState('');
   const [studentSearchDraft, setStudentSearchDraft] = useState('');
   const [teacherSearch, setTeacherSearch] = useState('');
   const [teacherSearchDraft, setTeacherSearchDraft] = useState('');
+  const [subjectSearch, setSubjectSearch] = useState('');
+  const [subjectSearchDraft, setSubjectSearchDraft] = useState('');
 
   const [userList, setUserList] = useState(users);
   const [classList, setClassList] = useState(classes);
+  const [subjectList, setSubjectList] = useState(subjects);
 
   useEffect(() => {
     setUserList(users);
@@ -27,6 +31,10 @@ export default function AdminDashboard({
   useEffect(() => {
     setClassList(classes);
   }, [classes]);
+
+  useEffect(() => {
+    setSubjectList(subjects);
+  }, [subjects]);
 
   const studentUsers = userList.filter(u => u.role === 'student');
   const teacherUsers = userList.filter(u => u.role === 'teacher');
@@ -65,6 +73,28 @@ export default function AdminDashboard({
     );
   });
 
+  const filteredSubjects = subjectList.filter(s => {
+    if (!subjectSearch) return true;
+    const terms = subjectSearch
+      .toLowerCase()
+      .split(/\s+/)
+      .filter(Boolean);
+    if (terms.length === 0) return true;
+
+    const tagInfo = subjectFilterTags && subjectFilterTags[s.id];
+    const tagDepartments = tagInfo?.departments || [];
+    const tagYears = tagInfo?.years || [];
+
+    return terms.every(term =>
+      String(s.id).includes(term) ||
+      (s.code && s.code.toLowerCase().includes(term)) ||
+      (s.name && s.name.toLowerCase().includes(term)) ||
+      (s.description && s.description.toLowerCase().includes(term)) ||
+      tagDepartments.some(d => d && d.toLowerCase().includes(term)) ||
+      tagYears.some(y => y && String(y).toLowerCase().includes(term))
+    );
+  });
+
   const studentDepartmentYearMap = studentUsers.reduce((acc, s) => {
     const dept = s.studentDepartment || 'Unassigned';
     const year = s.studentYear || 'N/A';
@@ -86,6 +116,11 @@ export default function AdminDashboard({
     acc[course].levels[level] = (acc[course].levels[level] || 0) + 1;
     return acc;
   }, {});
+
+  const subjectDepartmentYearMap =
+    subjectStudentCounts && Object.keys(subjectStudentCounts).length > 0
+      ? subjectStudentCounts
+      : studentDepartmentYearMap;
 
   const [editingStudent, setEditingStudent] = useState(null);
   const [addingStudent, setAddingStudent] = useState(false);
@@ -119,6 +154,32 @@ export default function AdminDashboard({
     teacherLevel: '',
   });
 
+  const [editingClass, setEditingClass] = useState(null);
+  const [addingClass, setAddingClass] = useState(false);
+  const [classForm, setClassForm] = useState({
+    name: '',
+    description: '',
+  });
+  const [newClassForm, setNewClassForm] = useState({
+    name: '',
+    description: '',
+  });
+  const [classSaving, setClassSaving] = useState(false);
+
+  const [editingSubject, setEditingSubject] = useState(null);
+  const [addingSubject, setAddingSubject] = useState(false);
+  const [subjectForm, setSubjectForm] = useState({
+    code: '',
+    name: '',
+    description: '',
+  });
+  const [newSubjectForm, setNewSubjectForm] = useState({
+    code: '',
+    name: '',
+    description: '',
+  });
+  const [subjectSaving, setSubjectSaving] = useState(false);
+
   useEffect(() => {
     if (studentSearch && filteredStudentUsers.length === 0 && studentUsers.length > 0) {
       setStudentSearch('');
@@ -132,6 +193,13 @@ export default function AdminDashboard({
       setTeacherSearchDraft('');
     }
   }, [teacherSearch, filteredTeacherUsers.length, teacherUsers.length]);
+
+  useEffect(() => {
+    if (subjectSearch && filteredSubjects.length === 0 && subjectList.length > 0) {
+      setSubjectSearch('');
+      setSubjectSearchDraft('');
+    }
+  }, [subjectSearch, filteredSubjects.length, subjectList.length]);
 
   const openEditStudent = (student) => {
     setEditingStudent(student);
@@ -382,6 +450,243 @@ export default function AdminDashboard({
     } catch (error) {
       console.error('Delete teacher error', error);
       alert('Failed to delete teacher');
+    }
+  };
+
+  const openEditClass = (classSection) => {
+    setEditingClass(classSection);
+    setClassForm({
+      name: classSection.name || '',
+      description: classSection.description || '',
+    });
+  };
+
+  const closeEditClass = () => {
+    setEditingClass(null);
+    setClassForm({ name: '', description: '' });
+    setClassSaving(false);
+  };
+
+  const openAddClass = () => {
+    setNewClassForm({ name: '', description: '' });
+    setAddingClass(true);
+  };
+
+  const closeAddClass = () => {
+    setAddingClass(false);
+    setNewClassForm({ name: '', description: '' });
+    setClassSaving(false);
+  };
+
+  const handleClassFormChange = (e) => {
+    const { name, value } = e.target;
+    setClassForm(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleNewClassFormChange = (e) => {
+    const { name, value } = e.target;
+    setNewClassForm(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleSaveClass = async () => {
+    if (!editingClass) return;
+    setClassSaving(true);
+    try {
+      const res = await fetch(`/api/admin/classes/${editingClass.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: classForm.name,
+          description: classForm.description,
+        }),
+      });
+
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.classSection) {
+        alert(data.message || 'Failed to update class');
+        setClassSaving(false);
+        return;
+      }
+
+      setClassList(prev => prev.map(c => (c.id === data.classSection.id ? data.classSection : c)));
+      alert('Class updated successfully');
+      setClassSaving(false);
+      closeEditClass();
+    } catch (error) {
+      console.error('Save class error', error);
+      alert('Failed to update class');
+      setClassSaving(false);
+    }
+  };
+
+  const handleCreateClass = async () => {
+    setClassSaving(true);
+    try {
+      const res = await fetch('/api/admin/classes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: newClassForm.name,
+          description: newClassForm.description,
+        }),
+      });
+
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.classSection) {
+        alert(data.message || 'Failed to create class');
+        setClassSaving(false);
+        return;
+      }
+
+      setClassList(prev => [...prev, data.classSection]);
+      alert('Class created successfully');
+      setClassSaving(false);
+      closeAddClass();
+    } catch (error) {
+      console.error('Create class error', error);
+      alert('Failed to create class');
+      setClassSaving(false);
+    }
+  };
+
+  const handleDeleteClass = async (classSection) => {
+    if (!classSection) return;
+    if (typeof window !== 'undefined') {
+      if (!window.confirm(`Delete class ${classSection.name}?`)) return;
+    }
+
+    try {
+      const res = await fetch(`/api/admin/classes/${classSection.id}`, { method: 'DELETE' });
+      if (!res.ok && res.status !== 204) {
+        const data = await res.json().catch(() => ({}));
+        alert(data.message || 'Failed to delete class');
+        return;
+      }
+      setClassList(prev => prev.filter(c => c.id !== classSection.id));
+      alert('Class deleted successfully');
+    } catch (error) {
+      console.error('Delete class error', error);
+      alert('Failed to delete class');
+    }
+  };
+
+  const openEditSubject = (subject) => {
+    setEditingSubject(subject);
+    setSubjectForm({
+      code: subject.code || '',
+      name: subject.name || '',
+      description: subject.description || '',
+    });
+  };
+
+  const closeEditSubject = () => {
+    setEditingSubject(null);
+    setSubjectForm({ code: '', name: '', description: '' });
+    setSubjectSaving(false);
+  };
+
+  const openAddSubject = () => {
+    setNewSubjectForm({ code: '', name: '', description: '' });
+    setAddingSubject(true);
+  };
+
+  const closeAddSubject = () => {
+    setAddingSubject(false);
+    setNewSubjectForm({ code: '', name: '', description: '' });
+    setSubjectSaving(false);
+  };
+
+  const handleSubjectFormChange = (e) => {
+    const { name, value } = e.target;
+    setSubjectForm(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleNewSubjectFormChange = (e) => {
+    const { name, value } = e.target;
+    setNewSubjectForm(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleSaveSubject = async () => {
+    if (!editingSubject) return;
+    setSubjectSaving(true);
+    try {
+      const res = await fetch(`/api/admin/subjects/${editingSubject.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          code: subjectForm.code,
+          name: subjectForm.name,
+          description: subjectForm.description,
+        }),
+      });
+
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.subject) {
+        alert(data.message || 'Failed to update subject');
+        setSubjectSaving(false);
+        return;
+      }
+
+      setSubjectList(prev => prev.map(s => (s.id === data.subject.id ? data.subject : s)));
+      alert('Subject updated successfully');
+      setSubjectSaving(false);
+      closeEditSubject();
+    } catch (error) {
+      console.error('Save subject error', error);
+      alert('Failed to update subject');
+      setSubjectSaving(false);
+    }
+  };
+
+  const handleCreateSubject = async () => {
+    setSubjectSaving(true);
+    try {
+      const res = await fetch('/api/admin/subjects', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          code: newSubjectForm.code,
+          name: newSubjectForm.name,
+          description: newSubjectForm.description,
+        }),
+      });
+
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.subject) {
+        alert(data.message || 'Failed to create subject');
+        setSubjectSaving(false);
+        return;
+      }
+
+      setSubjectList(prev => [...prev, data.subject]);
+      alert('Subject created successfully');
+      setSubjectSaving(false);
+      closeAddSubject();
+    } catch (error) {
+      console.error('Create subject error', error);
+      alert('Failed to create subject');
+      setSubjectSaving(false);
+    }
+  };
+
+  const handleDeleteSubject = async (subject) => {
+    if (!subject) return;
+    if (typeof window !== 'undefined') {
+      if (!window.confirm(`Delete subject ${subject.code} - ${subject.name}?`)) return;
+    }
+
+    try {
+      const res = await fetch(`/api/admin/subjects/${subject.id}`, { method: 'DELETE' });
+      if (!res.ok && res.status !== 204) {
+        const data = await res.json().catch(() => ({}));
+        alert(data.message || 'Failed to delete subject');
+        return;
+      }
+      setSubjectList(prev => prev.filter(s => s.id !== subject.id));
+      alert('Subject deleted successfully');
+    } catch (error) {
+      console.error('Delete subject error', error);
+      alert('Failed to delete subject');
     }
   };
 
@@ -751,6 +1056,7 @@ export default function AdminDashboard({
                 <div className="flex flex-wrap gap-2">
                   <button
                     type="button"
+                    onClick={openAddClass}
                     className="inline-flex items-center px-3 py-1.5 rounded-md bg-blue-600 text-white text-xs font-medium shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                   >
                     Add class
@@ -769,7 +1075,7 @@ export default function AdminDashboard({
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
-                    {classes.map(c => (
+                    {classList.map(c => (
                       <tr key={c.id} className="hover:bg-gray-50">
                         <td className="px-4 py-2 text-xs text-gray-500">{c.id}</td>
                         <td className="px-4 py-2 text-gray-900">{c.name}</td>
@@ -778,12 +1084,14 @@ export default function AdminDashboard({
                           <div className="flex items-center justify-center gap-2">
                             <button
                               type="button"
+                              onClick={() => openEditClass(c)}
                               className="inline-flex items-center px-2 py-1 rounded-md border border-gray-300 text-xs text-gray-700 bg-white hover:bg-gray-50"
                             >
                               Edit
                             </button>
                             <button
                               type="button"
+                              onClick={() => handleDeleteClass(c)}
                               className="inline-flex items-center px-2 py-1 rounded-md border border-red-200 text-xs text-red-600 bg-red-50 hover:bg-red-100"
                             >
                               Delete
@@ -792,7 +1100,7 @@ export default function AdminDashboard({
                         </td>
                       </tr>
                     ))}
-                    {classes.length === 0 && (
+                    {classList.length === 0 && (
                       <tr>
                         <td
                           colSpan={4}
@@ -815,14 +1123,94 @@ export default function AdminDashboard({
                   <h2 className="text-lg font-semibold">Subjects</h2>
                   <p className="text-sm text-gray-600">Subjects that teachers can teach and students can enroll in.</p>
                 </div>
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-col md:flex-row md:items-center md:justify-end gap-2 w-full md:w-auto">
                   <button
                     type="button"
+                    onClick={openAddSubject}
                     className="inline-flex items-center px-3 py-1.5 rounded-md bg-blue-600 text-white text-xs font-medium shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                   >
                     Add subject
                   </button>
+                  <div className="flex flex-row gap-2 w-full md:w-auto">
+                    <input
+                      type="text"
+                      value={subjectSearchDraft}
+                      onChange={(e) => setSubjectSearchDraft(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') setSubjectSearch(subjectSearchDraft);
+                      }}
+                      placeholder="Filter by ID, code, name, description"
+                      className="w-full md:w-56 px-3 py-1.5 border border-gray-300 rounded-md text-xs shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setSubjectSearch(subjectSearchDraft)}
+                      className="inline-flex items-center px-3 py-1.5 rounded-md border border-gray-300 bg-white text-xs font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                    >
+                      Filter
+                    </button>
+                  </div>
                 </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {Object.keys(subjectDepartmentYearMap || {}).length > 0 ? (
+                  Object.entries(subjectDepartmentYearMap).map(([dept, info]) => (
+                    <div
+                      key={dept}
+                      className="rounded-lg border border-indigo-100 bg-indigo-50 px-3 py-2 text-xs flex flex-col gap-1"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <div>
+                          <p className="text-[11px] font-semibold text-indigo-800 uppercase tracking-wide">
+                            {dept}
+                          </p>
+                          <p className="text-[11px] text-indigo-900/80">
+                            {info.total} student{info.total === 1 ? '' : 's'} enrolled
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSubjectSearch(dept);
+                            setSubjectSearchDraft(dept);
+                          }}
+                          className="inline-flex items-center px-2 py-1 rounded-md bg-white text-[11px] font-medium text-indigo-700 border border-indigo-200 hover:bg-indigo-50"
+                        >
+                          Filter
+                        </button>
+                      </div>
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {Object.entries(info.years || {}).map(([year, count]) => {
+                          const label = year === 'N/A' ? 'Year N/A' : `Year ${year}`;
+                          const term = `${dept} ${year}`;
+                          return (
+                            <button
+                              key={year}
+                              type="button"
+                              onClick={() => {
+                                setSubjectSearch(term);
+                                setSubjectSearchDraft(term);
+                              }}
+                              className="inline-flex items-center px-2 py-0.5 rounded-full bg-white text-[11px] text-indigo-800 border border-indigo-200 hover:bg-indigo-50"
+                            >
+                              {label}
+                              <span className="ml-1 text-[10px] text-indigo-600">({count})</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="rounded-lg border border-dashed border-indigo-200 bg-indigo-50/40 px-3 py-2 text-xs text-indigo-900 flex flex-col gap-1">
+                    <p className="text-[11px] font-semibold uppercase tracking-wide">No department data yet</p>
+                    <p className="text-[11px]">
+                      Once students are enrolled in subjects with department and year information, summary cards by
+                      department and year will appear here.
+                    </p>
+                  </div>
+                )}
               </div>
 
               <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white">
@@ -837,7 +1225,7 @@ export default function AdminDashboard({
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
-                    {subjects.map(s => (
+                    {filteredSubjects.map(s => (
                       <tr key={s.id} className="hover:bg-gray-50">
                         <td className="px-4 py-2 text-xs text-gray-500">{s.id}</td>
                         <td className="px-4 py-2 text-gray-900">{s.code || '—'}</td>
@@ -847,12 +1235,14 @@ export default function AdminDashboard({
                           <div className="flex items-center justify-center gap-2">
                             <button
                               type="button"
+                              onClick={() => openEditSubject(s)}
                               className="inline-flex items-center px-2 py-1 rounded-md border border-gray-300 text-xs text-gray-700 bg-white hover:bg-gray-50"
                             >
                               Edit
                             </button>
                             <button
                               type="button"
+                              onClick={() => handleDeleteSubject(s)}
                               className="inline-flex items-center px-2 py-1 rounded-md border border-red-200 text-xs text-red-600 bg-red-50 hover:bg-red-100"
                             >
                               Delete
@@ -861,7 +1251,7 @@ export default function AdminDashboard({
                         </td>
                       </tr>
                     ))}
-                    {subjects.length === 0 && (
+                    {filteredSubjects.length === 0 && (
                       <tr>
                         <td
                           colSpan={5}
@@ -1342,6 +1732,240 @@ export default function AdminDashboard({
                     className="inline-flex items-center px-3 py-1.5 rounded-md border border-blue-600 text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-60"
                   >
                     {teacherSaving ? 'Saving...' : 'Create teacher'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+          {editingClass && (
+            <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40">
+              <div className="w-full max-w-sm rounded-lg bg-white shadow-xl p-4 sm:p-5">
+                <h3 className="text-sm font-semibold text-gray-900 mb-3">Edit class</h3>
+                <div className="space-y-3 mb-4">
+                  <div>
+                    <label htmlFor="class-name" className="block text-xs font-medium text-gray-700 mb-1">
+                      Name
+                    </label>
+                    <input
+                      id="class-name"
+                      name="name"
+                      type="text"
+                      value={classForm.name}
+                      onChange={handleClassFormChange}
+                      className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="class-description" className="block text-xs font-medium text-gray-700 mb-1">
+                      Description
+                    </label>
+                    <textarea
+                      id="class-description"
+                      name="description"
+                      value={classForm.description}
+                      onChange={handleClassFormChange}
+                      className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+                </div>
+                <div className="flex justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={closeEditClass}
+                    className="inline-flex items-center px-3 py-1.5 rounded-md border border-gray-300 text-xs font-medium text-gray-700 bg-white hover:bg-gray-50"
+                    disabled={classSaving}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSaveClass}
+                    disabled={classSaving}
+                    className="inline-flex items-center px-3 py-1.5 rounded-md border border-blue-600 text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-60"
+                  >
+                    {classSaving ? 'Saving...' : 'Save changes'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+          {addingClass && (
+            <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40">
+              <div className="w-full max-w-sm rounded-lg bg-white shadow-xl p-4 sm:p-5">
+                <h3 className="text-sm font-semibold text-gray-900 mb-3">Add class</h3>
+                <div className="space-y-3 mb-4">
+                  <div>
+                    <label htmlFor="new-class-name" className="block text-xs font-medium text-gray-700 mb-1">
+                      Name
+                    </label>
+                    <input
+                      id="new-class-name"
+                      name="name"
+                      type="text"
+                      value={newClassForm.name}
+                      onChange={handleNewClassFormChange}
+                      className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="new-class-description" className="block text-xs font-medium text-gray-700 mb-1">
+                      Description
+                    </label>
+                    <textarea
+                      id="new-class-description"
+                      name="description"
+                      value={newClassForm.description}
+                      onChange={handleNewClassFormChange}
+                      className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+                </div>
+                <div className="flex justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={closeAddClass}
+                    className="inline-flex items-center px-3 py-1.5 rounded-md border border-gray-300 text-xs font-medium text-gray-700 bg-white hover:bg-gray-50"
+                    disabled={classSaving}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleCreateClass}
+                    disabled={classSaving}
+                    className="inline-flex items-center px-3 py-1.5 rounded-md border border-blue-600 text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-60"
+                  >
+                    {classSaving ? 'Saving...' : 'Create class'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+          {editingSubject && (
+            <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40">
+              <div className="w-full max-w-sm rounded-lg bg-white shadow-xl p-4 sm:p-5">
+                <h3 className="text-sm font-semibold text-gray-900 mb-3">Edit subject</h3>
+                <div className="space-y-3 mb-4">
+                  <div>
+                    <label htmlFor="subject-code" className="block text-xs font-medium text-gray-700 mb-1">
+                      Code
+                    </label>
+                    <input
+                      id="subject-code"
+                      name="code"
+                      type="text"
+                      value={subjectForm.code}
+                      onChange={handleSubjectFormChange}
+                      className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="subject-name" className="block text-xs font-medium text-gray-700 mb-1">
+                      Name
+                    </label>
+                    <input
+                      id="subject-name"
+                      name="name"
+                      type="text"
+                      value={subjectForm.name}
+                      onChange={handleSubjectFormChange}
+                      className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="subject-description" className="block text-xs font-medium text-gray-700 mb-1">
+                      Description
+                    </label>
+                    <textarea
+                      id="subject-description"
+                      name="description"
+                      value={subjectForm.description}
+                      onChange={handleSubjectFormChange}
+                      className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+                </div>
+                <div className="flex justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={closeEditSubject}
+                    className="inline-flex items-center px-3 py-1.5 rounded-md border border-gray-300 text-xs font-medium text-gray-700 bg-white hover:bg-gray-50"
+                    disabled={subjectSaving}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSaveSubject}
+                    disabled={subjectSaving}
+                    className="inline-flex items-center px-3 py-1.5 rounded-md border border-blue-600 text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-60"
+                  >
+                    {subjectSaving ? 'Saving...' : 'Save changes'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+          {addingSubject && (
+            <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40">
+              <div className="w-full max-w-sm rounded-lg bg-white shadow-xl p-4 sm:p-5">
+                <h3 className="text-sm font-semibold text-gray-900 mb-3">Add subject</h3>
+                <div className="space-y-3 mb-4">
+                  <div>
+                    <label htmlFor="new-subject-code" className="block text-xs font-medium text-gray-700 mb-1">
+                      Code
+                    </label>
+                    <input
+                      id="new-subject-code"
+                      name="code"
+                      type="text"
+                      value={newSubjectForm.code}
+                      onChange={handleNewSubjectFormChange}
+                      className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="new-subject-name" className="block text-xs font-medium text-gray-700 mb-1">
+                      Name
+                    </label>
+                    <input
+                      id="new-subject-name"
+                      name="name"
+                      type="text"
+                      value={newSubjectForm.name}
+                      onChange={handleNewSubjectFormChange}
+                      className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="new-subject-description" className="block text-xs font-medium text-gray-700 mb-1">
+                      Description
+                    </label>
+                    <textarea
+                      id="new-subject-description"
+                      name="description"
+                      value={newSubjectForm.description}
+                      onChange={handleNewSubjectFormChange}
+                      className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+                </div>
+                <div className="flex justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={closeAddSubject}
+                    className="inline-flex items-center px-3 py-1.5 rounded-md border border-gray-300 text-xs font-medium text-gray-700 bg-white hover:bg-gray-50"
+                    disabled={subjectSaving}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleCreateSubject}
+                    disabled={subjectSaving}
+                    className="inline-flex items-center px-3 py-1.5 rounded-md border border-blue-600 text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-60"
+                  >
+                    {subjectSaving ? 'Saving...' : 'Create subject'}
                   </button>
                 </div>
               </div>

@@ -2,7 +2,7 @@ import AdminDashboard from '../../components/layout/AdminDashboard';
 import { getUserFromRequest } from '../../lib/auth';
 import prisma from '../../lib/prisma';
 
-export default function AdminPage({ user, overview, users, classes, subjects, subjectStudentCounts }) {
+export default function AdminPage({ user, overview, users, classes, subjects, subjectStudentCounts, subjectFilterTags }) {
   return (
     <AdminDashboard
       user={user}
@@ -11,6 +11,7 @@ export default function AdminPage({ user, overview, users, classes, subjects, su
       classes={classes}
       subjects={subjects}
       subjectStudentCounts={subjectStudentCounts}
+      subjectFilterTags={subjectFilterTags}
     />
   );
 }
@@ -32,7 +33,13 @@ export async function getServerSideProps({ req }) {
       select: {
         id: true,
         subject: {
-          select: { name: true },
+          select: { id: true, name: true },
+        },
+        student: {
+          select: {
+            studentDepartment: true,
+            studentYear: true,
+          },
         },
       },
     }),
@@ -41,8 +48,45 @@ export async function getServerSideProps({ req }) {
   const overview = { studentCount, teacherCount, classCount: classRows.length };
 
   const subjectStudentCounts = enrollmentRows.reduce((acc, row) => {
-    const subjectName = row.subject?.name || 'Unknown subject';
-    acc[subjectName] = (acc[subjectName] || 0) + 1;
+    const dept = row.student?.studentDepartment || 'Unassigned';
+    const year = row.student?.studentYear || 'N/A';
+
+    if (!acc[dept]) {
+      acc[dept] = { total: 0, years: {} };
+    }
+
+    acc[dept].total += 1;
+    acc[dept].years[year] = (acc[dept].years[year] || 0) + 1;
+
+    return acc;
+  }, {});
+
+  const rawSubjectFilterTags = enrollmentRows.reduce((acc, row) => {
+    const subjectId = row.subject?.id;
+    if (!subjectId) return acc;
+
+    if (!acc[subjectId]) {
+      acc[subjectId] = {
+        departments: new Set(),
+        years: new Set(),
+      };
+    }
+
+    const dept = row.student?.studentDepartment;
+    const year = row.student?.studentYear;
+
+    if (dept) acc[subjectId].departments.add(dept);
+    if (year) acc[subjectId].years.add(year);
+
+    return acc;
+  }, {});
+
+  const subjectFilterTags = Object.keys(rawSubjectFilterTags).reduce((acc, key) => {
+    const info = rawSubjectFilterTags[key];
+    acc[key] = {
+      departments: Array.from(info.departments),
+      years: Array.from(info.years),
+    };
     return acc;
   }, {});
 
@@ -54,6 +98,7 @@ export async function getServerSideProps({ req }) {
       classes: classRows,
       subjects: subjectRows,
       subjectStudentCounts,
+      subjectFilterTags,
     },
   };
 }

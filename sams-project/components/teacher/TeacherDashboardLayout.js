@@ -1,6 +1,6 @@
 import { useState } from 'react';
 
-export default function TeacherDashboardLayout({ user }) {
+export default function TeacherDashboardLayout({ user, classes = [], subjects = [] }) {
   const [activeSection, setActiveSection] = useState('overview');
 
   const [attendanceDate, setAttendanceDate] = useState(() => {
@@ -23,6 +23,13 @@ export default function TeacherDashboardLayout({ user }) {
   const [studentsLoading, setStudentsLoading] = useState(false);
   const [studentsError, setStudentsError] = useState('');
   const [studentsSummary, setStudentsSummary] = useState([]);
+
+  const [reportsSubjectId, setReportsSubjectId] = useState('');
+  const [reportsFrom, setReportsFrom] = useState('');
+  const [reportsTo, setReportsTo] = useState('');
+  const [reportsLoading, setReportsLoading] = useState(false);
+  const [reportsError, setReportsError] = useState('');
+  const [reportsData, setReportsData] = useState([]);
 
   const containerStyle = {
     minHeight: '100vh',
@@ -87,7 +94,9 @@ export default function TeacherDashboardLayout({ user }) {
 
       const initialStatus = {};
       students.forEach(s => {
-        initialStatus[s.enrollmentId] = initialStatus[s.enrollmentId] || 'PRESENT';
+        if (attendanceStatus[s.enrollmentId]) {
+          initialStatus[s.enrollmentId] = attendanceStatus[s.enrollmentId];
+        }
       });
       setAttendanceStatus(initialStatus);
     } catch (err) {
@@ -173,6 +182,67 @@ export default function TeacherDashboardLayout({ user }) {
       setStudentsLoading(false);
     }
   }
+
+  async function handleLoadReports(e) {
+    e.preventDefault();
+    setReportsError('');
+
+    try {
+      setReportsLoading(true);
+      const params = new URLSearchParams();
+      if (reportsSubjectId) params.set('subjectId', reportsSubjectId);
+      if (reportsFrom) params.set('from', reportsFrom);
+      if (reportsTo) params.set('to', reportsTo);
+
+      const res = await fetch(`/api/teacher/reports${params.toString() ? `?${params.toString()}` : ''}`);
+      const data = await res.json();
+
+      if (!res.ok) {
+        setReportsError(data.message || 'Failed to load reports.');
+        setReportsData([]);
+        return;
+      }
+
+      setReportsData(data.subjects || []);
+    } catch (err) {
+      setReportsError('Something went wrong while loading reports.');
+      setReportsData([]);
+    } finally {
+      setReportsLoading(false);
+    }
+  }
+
+  const [attendanceFilterName, setAttendanceFilterName] = useState('');
+  const [attendanceFilterDepartment, setAttendanceFilterDepartment] = useState('');
+  const [attendanceFilterYear, setAttendanceFilterYear] = useState('');
+
+  const filteredAttendanceStudents = attendanceStudents.filter(s => {
+    const name = (s.name || '').toLowerCase();
+    const dept = (s.department || '').toLowerCase();
+    const year = (s.year || '').toLowerCase();
+    const nameFilter = attendanceFilterName.toLowerCase();
+    const deptFilter = attendanceFilterDepartment.toLowerCase();
+    const yearFilter = attendanceFilterYear.toLowerCase();
+    if (nameFilter && !name.includes(nameFilter)) return false;
+    if (deptFilter && !dept.includes(deptFilter)) return false;
+    if (yearFilter && !year.includes(yearFilter)) return false;
+    return true;
+  });
+
+  const sessionSummary = filteredAttendanceStudents.length
+    ? filteredAttendanceStudents.reduce(
+        (acc, student) => {
+          const status = attendanceStatus[student.enrollmentId];
+          acc.total += 1;
+          if (!status) acc.unmarked += 1;
+          else if (status === 'PRESENT') acc.present += 1;
+          else if (status === 'LATE') acc.late += 1;
+          else if (status === 'ABSENT') acc.absent += 1;
+          return acc;
+        },
+        { total: 0, present: 0, late: 0, absent: 0, unmarked: 0 }
+      )
+    : { total: 0, present: 0, late: 0, absent: 0, unmarked: 0 };
 
   return (
     <main style={containerStyle}>
@@ -399,36 +469,48 @@ export default function TeacherDashboardLayout({ user }) {
                 }}
               >
                 <div style={{ minWidth: '140px' }}>
-                  <label style={{ display: 'block', fontSize: '0.8rem', marginBottom: '0.25rem' }}>Class ID</label>
-                  <input
-                    type="text"
+                  <label style={{ display: 'block', fontSize: '0.8rem', marginBottom: '0.25rem' }}>Class</label>
+                  <select
                     value={classId}
                     onChange={e => setClassId(e.target.value)}
-                    placeholder="e.g. 1"
                     style={{
                       width: '100%',
                       padding: '0.4rem 0.5rem',
                       borderRadius: '0.375rem',
                       border: '1px solid #d4d4d4',
                       fontSize: '0.85rem',
+                      background: '#ffffff',
                     }}
-                  />
+                  >
+                    <option value="">Select class</option>
+                    {classes.map(c => (
+                      <option key={c.id} value={c.id}>
+                        {c.name}
+                      </option>
+                    ))}
+                  </select>
                 </div>
                 <div style={{ minWidth: '140px' }}>
-                  <label style={{ display: 'block', fontSize: '0.8rem', marginBottom: '0.25rem' }}>Subject ID</label>
-                  <input
-                    type="text"
+                  <label style={{ display: 'block', fontSize: '0.8rem', marginBottom: '0.25rem' }}>Subject</label>
+                  <select
                     value={subjectId}
                     onChange={e => setSubjectId(e.target.value)}
-                    placeholder="e.g. 1"
                     style={{
                       width: '100%',
                       padding: '0.4rem 0.5rem',
                       borderRadius: '0.375rem',
                       border: '1px solid #d4d4d4',
                       fontSize: '0.85rem',
+                      background: '#ffffff',
                     }}
-                  />
+                  >
+                    <option value="">Select subject</option>
+                    {subjects.map(s => (
+                      <option key={s.id} value={s.id}>
+                        {s.code ? `${s.code} - ${s.name}` : s.name}
+                      </option>
+                    ))}
+                  </select>
                 </div>
                 <div style={{ minWidth: '150px' }}>
                   <label style={{ display: 'block', fontSize: '0.8rem', marginBottom: '0.25rem' }}>Date</label>
@@ -471,22 +553,150 @@ export default function TeacherDashboardLayout({ user }) {
 
               {attendanceStudents.length > 0 ? (
                 <>
+                  <div
+                    style={{
+                      display: 'flex',
+                      flexWrap: 'wrap',
+                      gap: '0.75rem',
+                      marginBottom: '0.75rem',
+                      fontSize: '0.8rem',
+                    }}
+                  >
+                    <div
+                      style={{
+                        padding: '0.5rem 0.75rem',
+                        borderRadius: '0.5rem',
+                        background: '#eff6ff',
+                        border: '1px solid #bfdbfe',
+                      }}
+                    >
+                      <strong style={{ marginRight: '0.5rem' }}>Session summary:</strong>
+                      <span style={{ marginRight: '0.5rem' }}>Total: {sessionSummary.total}</span>
+                      <span style={{ marginRight: '0.5rem' }}>Present: {sessionSummary.present}</span>
+                      <span style={{ marginRight: '0.5rem' }}>Late: {sessionSummary.late}</span>
+                      <span style={{ marginRight: '0.5rem' }}>Absent: {sessionSummary.absent}</span>
+                      <span>Unmarked: {sessionSummary.unmarked}</span>
+                    </div>
+                  </div>
+
+                  <div
+                    style={{
+                      display: 'flex',
+                      flexWrap: 'wrap',
+                      gap: '0.75rem',
+                      marginBottom: '0.75rem',
+                      fontSize: '0.8rem',
+                    }}
+                  >
+                    <input
+                      type="text"
+                      value={attendanceFilterName}
+                      onChange={e => setAttendanceFilterName(e.target.value)}
+                      placeholder="Filter by name"
+                      style={{
+                        flex: 1,
+                        minWidth: '160px',
+                        padding: '0.4rem 0.5rem',
+                        borderRadius: '0.375rem',
+                        border: '1px solid #d4d4d4',
+                        fontSize: '0.8rem',
+                      }}
+                    />
+                    <input
+                      type="text"
+                      value={attendanceFilterDepartment}
+                      onChange={e => setAttendanceFilterDepartment(e.target.value)}
+                      placeholder="Department"
+                      style={{
+                        flex: 1,
+                        minWidth: '140px',
+                        padding: '0.4rem 0.5rem',
+                        borderRadius: '0.375rem',
+                        border: '1px solid #d4d4d4',
+                        fontSize: '0.8rem',
+                      }}
+                    />
+                    <input
+                      type="text"
+                      value={attendanceFilterYear}
+                      onChange={e => setAttendanceFilterYear(e.target.value)}
+                      placeholder="Year level"
+                      style={{
+                        flex: 1,
+                        minWidth: '120px',
+                        padding: '0.4rem 0.5rem',
+                        borderRadius: '0.375rem',
+                        border: '1px solid #d4d4d4',
+                        fontSize: '0.8rem',
+                      }}
+                    />
+                  </div>
+
+                  <div
+                    style={{
+                      display: 'flex',
+                      flexWrap: 'wrap',
+                      gap: '0.75rem',
+                      marginBottom: '0.75rem',
+                      fontSize: '0.8rem',
+                    }}
+                  >
+                    <div
+                      style={{
+                        flex: 1,
+                        padding: '0.5rem 0.75rem',
+                        borderRadius: '0.5rem',
+                        border: '1px solid #e5e7eb',
+                        background: '#f9fafb',
+                        maxHeight: '140px',
+                        overflow: 'auto',
+                      }}
+                    >
+                      <div style={{ marginBottom: '0.25rem', fontWeight: 600 }}>Missing / unmarked students</div>
+                      {filteredAttendanceStudents
+                        .filter(s => {
+                          const status = attendanceStatus[s.enrollmentId];
+                          return !status || status === 'ABSENT';
+                        })
+                        .map(s => (
+                          <div key={s.enrollmentId} style={{ padding: '4px 0', borderBottom: '1px solid #f3f4f6' }}>
+                            <div style={{ fontSize: '0.8rem', fontWeight: 500 }}>{s.name}</div>
+                            <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>
+                              {(s.email || '') + (s.department ? ` · ${s.department}` : '') + (s.year ? ` · ${s.year}` : '')}
+                            </div>
+                          </div>
+                        ))}
+                    </div>
+                  </div>
+
                   <div style={{ overflowX: 'auto', marginBottom: '0.75rem' }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
                       <thead>
                         <tr style={{ background: '#f3f4f6' }}>
                           <th style={{ textAlign: 'left', padding: '0.5rem', borderBottom: '1px solid #e5e7eb' }}>Student</th>
                           <th style={{ textAlign: 'left', padding: '0.5rem', borderBottom: '1px solid #e5e7eb' }}>Email</th>
+                          <th style={{ textAlign: 'left', padding: '0.5rem', borderBottom: '1px solid #e5e7eb' }}>Department</th>
+                          <th style={{ textAlign: 'left', padding: '0.5rem', borderBottom: '1px solid #e5e7eb' }}>Year</th>
                           <th style={{ textAlign: 'center', padding: '0.5rem', borderBottom: '1px solid #e5e7eb' }}>Status</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {attendanceStudents.map(student => (
+                        {filteredAttendanceStudents.map(student => (
                           <tr key={student.enrollmentId}>
                             <td style={{ padding: '0.5rem', borderBottom: '1px solid #f3f4f6' }}>{student.name}</td>
                             <td style={{ padding: '0.5rem', borderBottom: '1px solid #f3f4f6' }}>{student.email}</td>
+                            <td style={{ padding: '0.5rem', borderBottom: '1px solid #f3f4f6' }}>{student.department || '—'}</td>
+                            <td style={{ padding: '0.5rem', borderBottom: '1px solid #f3f4f6' }}>{student.year || '—'}</td>
                             <td style={{ padding: '0.5rem', borderBottom: '1px solid #f3f4f6', textAlign: 'center' }}>
-                              <div style={{ display: 'inline-flex', gap: '0.25rem', background: '#f3f4f6', borderRadius: '999px', padding: '0.15rem' }}>
+                              <div
+                                style={{
+                                  display: 'inline-flex',
+                                  gap: '0.25rem',
+                                  background: '#f3f4f6',
+                                  borderRadius: '999px',
+                                  padding: '0.15rem',
+                                }}
+                              >
                                 {['PRESENT', 'LATE', 'ABSENT'].map(option => (
                                   <button
                                     key={option}
@@ -499,7 +709,7 @@ export default function TeacherDashboardLayout({ user }) {
                                       fontSize: '0.75rem',
                                       cursor: 'pointer',
                                       background:
-                                        (attendanceStatus[student.enrollmentId] || 'PRESENT') === option
+                                        attendanceStatus[student.enrollmentId] === option
                                           ? option === 'ABSENT'
                                             ? '#fee2e2'
                                             : option === 'LATE'
@@ -507,9 +717,7 @@ export default function TeacherDashboardLayout({ user }) {
                                             : '#dcfce7'
                                           : 'transparent',
                                       color:
-                                        (attendanceStatus[student.enrollmentId] || 'PRESENT') === option
-                                          ? '#111827'
-                                          : '#6b7280',
+                                        attendanceStatus[student.enrollmentId] === option ? '#111827' : '#6b7280',
                                     }}
                                   >
                                     {option}
@@ -522,6 +730,7 @@ export default function TeacherDashboardLayout({ user }) {
                       </tbody>
                     </table>
                   </div>
+
                   <button
                     type="button"
                     onClick={handleSaveAttendance}
@@ -541,7 +750,7 @@ export default function TeacherDashboardLayout({ user }) {
                 </>
               ) : (
                 <p style={{ fontSize: '0.8rem', color: '#9ca3af' }}>
-                  No students loaded yet. Enter class ID and subject ID, then click 
+                  No students loaded yet. Enter class ID and subject ID, then click
                   <span style={{ fontWeight: 600 }}> Load students</span> to start recording attendance.
                 </p>
               )}
@@ -558,10 +767,131 @@ export default function TeacherDashboardLayout({ user }) {
               }}
             >
               <h2 style={{ fontSize: '1.1rem', marginBottom: '0.5rem' }}>Reports & summaries</h2>
-              <p style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '0.5rem' }}>
-                Generates reports and summaries per subject for your assigned classes.
+              <p style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '0.75rem' }}>
+                Generate summaries per subject for your assigned classes over a date range.
               </p>
-              <p style={{ fontSize: '0.8rem', color: '#9ca3af' }}>Placeholder — connect this to reporting data (per subject, per date range).</p>
+              <form
+                onSubmit={handleLoadReports}
+                style={{
+                  display: 'flex',
+                  flexWrap: 'wrap',
+                  gap: '0.75rem',
+                  alignItems: 'flex-end',
+                  marginBottom: '1rem',
+                }}
+              >
+                <div style={{ minWidth: '160px' }}>
+                  <label style={{ display: 'block', fontSize: '0.8rem', marginBottom: '0.25rem' }}>Subject</label>
+                  <select
+                    value={reportsSubjectId}
+                    onChange={e => setReportsSubjectId(e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '0.4rem 0.5rem',
+                      borderRadius: '0.375rem',
+                      border: '1px solid #d4d4d4',
+                      fontSize: '0.85rem',
+                      background: '#ffffff',
+                    }}
+                  >
+                    <option value="">All subjects</option>
+                    {subjects.map(s => (
+                      <option key={s.id} value={s.id}>
+                        {s.code ? `${s.code} - ${s.name}` : s.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div style={{ minWidth: '150px' }}>
+                  <label style={{ display: 'block', fontSize: '0.8rem', marginBottom: '0.25rem' }}>From</label>
+                  <input
+                    type="date"
+                    value={reportsFrom}
+                    onChange={e => setReportsFrom(e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '0.4rem 0.5rem',
+                      borderRadius: '0.375rem',
+                      border: '1px solid #d4d4d4',
+                      fontSize: '0.85rem',
+                    }}
+                  />
+                </div>
+                <div style={{ minWidth: '150px' }}>
+                  <label style={{ display: 'block', fontSize: '0.8rem', marginBottom: '0.25rem' }}>To</label>
+                  <input
+                    type="date"
+                    value={reportsTo}
+                    onChange={e => setReportsTo(e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '0.4rem 0.5rem',
+                      borderRadius: '0.375rem',
+                      border: '1px solid #d4d4d4',
+                      fontSize: '0.85rem',
+                    }}
+                  />
+                </div>
+                <button
+                  type="submit"
+                  disabled={reportsLoading}
+                  style={{
+                    padding: '0.45rem 0.9rem',
+                    borderRadius: '0.375rem',
+                    border: 'none',
+                    background: '#2563eb',
+                    color: '#ffffff',
+                    fontSize: '0.85rem',
+                    cursor: 'pointer',
+                  }}
+                >
+                  {reportsLoading ? 'Loading...' : 'Generate report'}
+                </button>
+              </form>
+              {reportsError && (
+                <p style={{ color: '#b91c1c', fontSize: '0.85rem', marginBottom: '0.75rem' }}>{reportsError}</p>
+              )}
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+                  <thead>
+                    <tr style={{ background: '#f3f4f6' }}>
+                      <th style={{ textAlign: 'left', padding: '0.5rem', borderBottom: '1px solid #e5e7eb' }}>Subject</th>
+                      <th style={{ textAlign: 'center', padding: '0.5rem', borderBottom: '1px solid #e5e7eb' }}>Present</th>
+                      <th style={{ textAlign: 'center', padding: '0.5rem', borderBottom: '1px solid #e5e7eb' }}>Late</th>
+                      <th style={{ textAlign: 'center', padding: '0.5rem', borderBottom: '1px solid #e5e7eb' }}>Absent</th>
+                      <th style={{ textAlign: 'center', padding: '0.5rem', borderBottom: '1px solid #e5e7eb' }}>Attendance %</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {reportsData && reportsData.length > 0 ? (
+                      reportsData.map(row => (
+                        <tr key={row.subjectId}>
+                          <td style={{ padding: '0.5rem', borderBottom: '1px solid #f3f4f6' }}>
+                            {row.code ? `${row.code} - ${row.name}` : row.name}
+                          </td>
+                          <td style={{ padding: '0.5rem', borderBottom: '1px solid #f3f4f6', textAlign: 'center' }}>{row.presentCount}</td>
+                          <td style={{ padding: '0.5rem', borderBottom: '1px solid #f3f4f6', textAlign: 'center' }}>{row.lateCount}</td>
+                          <td style={{ padding: '0.5rem', borderBottom: '1px solid #f3f4f6', textAlign: 'center' }}>{row.absentCount}</td>
+                          <td style={{ padding: '0.5rem', borderBottom: '1px solid #f3f4f6', textAlign: 'center' }}>
+                            {row.attendancePercentage != null ? `${row.attendancePercentage}%` : '—'}
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td
+                          colSpan={5}
+                          style={{ padding: '0.5rem', fontSize: '0.8rem', color: '#9ca3af', textAlign: 'center' }}
+                        >
+                          {reportsLoading
+                            ? 'Loading reports...'
+                            : 'No report data yet. Select filters and click Generate report.'}
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </section>
           )}
         </section>

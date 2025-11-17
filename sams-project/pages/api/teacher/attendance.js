@@ -24,7 +24,13 @@ export default async function handler(req, res) {
         },
         include: {
           student: {
-            select: { id: true, name: true, email: true },
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              studentDepartment: true,
+              studentYear: true,
+            },
           },
         },
       });
@@ -34,6 +40,8 @@ export default async function handler(req, res) {
         studentId: e.studentId,
         name: e.student.name,
         email: e.student.email,
+        department: e.student.studentDepartment,
+        year: e.student.studentYear,
       }));
 
       return res.status(200).json({ students });
