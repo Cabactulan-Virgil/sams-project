@@ -127,6 +127,8 @@ model Notification {
   classId   Int?
   subjectId Int?
   reportId  Int?
+  type      String   @default("registration")
+  isRead    Boolean  @default(false)
   createdAt DateTime @default(now())
 
   @@map("notifications")

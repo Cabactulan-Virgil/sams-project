@@ -165,6 +165,16 @@ export default function TeacherDashboard({ user, classes = [], subjects = [], st
     handleStatusChange(enrollmentId, status);
   }
 
+  function handleWarnMissing() {
+    if (typeof window !== 'undefined') {
+      window.alert('Please warn missing or unmarked students. They may be marked Late or Absent soon.');
+    }
+  }
+
+  function handleRefreshSessionSummary() {
+    setAttendanceStatus(prev => ({ ...prev }));
+  }
+
   function handleStartSession() {
     if (!attendanceStudents.length) {
       setAttendanceError('Load students before starting a session.');
@@ -596,6 +606,22 @@ export default function TeacherDashboard({ user, classes = [], subjects = [], st
                             </div>
                           </div>
                         ))}
+                    </div>
+                    <div className="flex flex-row md:flex-col gap-2 md:w-40">
+                      <button
+                        type="button"
+                        onClick={handleWarnMissing}
+                        className="inline-flex items-center justify-center px-3 py-1.5 rounded-md border border-amber-300 bg-amber-50 text-[11px] font-medium text-amber-800 hover:bg-amber-100"
+                      >
+                        Warn missing
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleRefreshSessionSummary}
+                        className="inline-flex items-center justify-center px-3 py-1.5 rounded-md border border-gray-300 bg-white text-[11px] font-medium text-gray-700 hover:bg-gray-50"
+                      >
+                        Refresh monitor
+                      </button>
                     </div>
                   </div>
 

@@ -11,6 +11,7 @@ export default function AdminPage({
   subjectStudentCounts,
   subjectFilterTags,
   enrollments,
+  notifications,
 }) {
   return (
     <AdminDashboard
@@ -22,6 +23,7 @@ export default function AdminPage({
       subjectStudentCounts={subjectStudentCounts}
       subjectFilterTags={subjectFilterTags}
       enrollments={enrollments}
+      notifications={notifications}
     />
   );
 }
@@ -33,7 +35,7 @@ export async function getServerSideProps({ req }) {
     return { redirect: { destination: '/login', permanent: false } };
   }
 
-  const [studentCount, teacherCount, classRows, userRows, subjectRows, enrollmentRows] = await Promise.all([
+  const [studentCount, teacherCount, classRows, userRows, subjectRows, enrollmentRows, notificationRows] = await Promise.all([
     prisma.user.count({ where: { role: 'student' } }),
     prisma.user.count({ where: { role: 'teacher' } }),
     prisma.classSection.findMany(),
@@ -69,6 +71,11 @@ export async function getServerSideProps({ req }) {
           select: { id: true, name: true },
         },
       },
+    }),
+    prisma.notification.findMany({
+      where: { type: 'registration' },
+      orderBy: { createdAt: 'desc' },
+      take: 50,
     }),
   ]);
 
@@ -127,6 +134,7 @@ export async function getServerSideProps({ req }) {
       subjectStudentCounts,
       subjectFilterTags,
       enrollments: enrollmentRows,
+      notifications: notificationRows,
     },
   };
 }

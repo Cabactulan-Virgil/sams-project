@@ -12,6 +12,7 @@ export default function AdminDashboard({
   subjectStudentCounts = {},
   subjectFilterTags = {},
   enrollments = [],
+  notifications = [],
 }) {
   const [activeSection, setActiveSection] = useState('overview');
   const [studentSearch, setStudentSearch] = useState('');
@@ -26,6 +27,9 @@ export default function AdminDashboard({
   const [subjectList, setSubjectList] = useState(subjects);
   const [enrollmentList, setEnrollmentList] = useState(enrollments);
   const [enrollmentStudentFilter, setEnrollmentStudentFilter] = useState('');
+  const [notificationList, setNotificationList] = useState(notifications);
+  const [notificationFilter, setNotificationFilter] = useState('all');
+  const [selectedNotificationUser, setSelectedNotificationUser] = useState(null);
 
   useEffect(() => {
     setUserList(users);
@@ -42,6 +46,10 @@ export default function AdminDashboard({
   useEffect(() => {
     setEnrollmentList(enrollments);
   }, [enrollments]);
+
+  useEffect(() => {
+    setNotificationList(notifications);
+  }, [notifications]);
 
   const studentUsers = userList.filter(u => u.role === 'student');
   const teacherUsers = userList.filter(u => u.role === 'teacher');
@@ -216,6 +224,23 @@ export default function AdminDashboard({
     subjectStudentCounts && Object.keys(subjectStudentCounts).length > 0
       ? subjectStudentCounts
       : studentDepartmentYearMap;
+
+  const registrationNotifications = notificationList || [];
+
+  const notificationsWithUsers = registrationNotifications.map(n => {
+    const relatedUserId = n.studentId || n.teacherId || null;
+    const relatedUser =
+      relatedUserId != null ? userList.find(u => u.id === relatedUserId) || null : null;
+    return { ...n, relatedUser };
+  });
+
+  const filteredNotifications = notificationsWithUsers.filter(n => {
+    if (notificationFilter === 'student') return n.studentId != null;
+    if (notificationFilter === 'teacher') return n.teacherId != null;
+    return true;
+  });
+
+  const unreadNotificationCount = registrationNotifications.filter(n => !n.isRead).length;
 
   const [editingStudent, setEditingStudent] = useState(null);
   const [addingStudent, setAddingStudent] = useState(false);
@@ -446,6 +471,9 @@ export default function AdminDashboard({
       }
 
       setUserList(prev => [...prev, data.user]);
+      if (data.notification) {
+        setNotificationList(prev => [data.notification, ...prev]);
+      }
       alert('Student created successfully');
       setStudentSaving(false);
       closeAddStudent();
@@ -572,6 +600,9 @@ export default function AdminDashboard({
       }
 
       setUserList(prev => [...prev, data.user]);
+      if (data.notification) {
+        setNotificationList(prev => [data.notification, ...prev]);
+      }
       alert('Teacher created successfully');
       setTeacherSaving(false);
       closeAddTeacher();
@@ -845,7 +876,7 @@ export default function AdminDashboard({
       <div className="w-full max-w-6xl flex flex-col md:flex-row gap-8">
         <Sidebar activeSection={activeSection} onSelect={setActiveSection} />
         <section className="flex-1 p-6 md:p-8 bg-white rounded-xl border border-gray-200 shadow-md">
-          <DashboardHeader user={user} />
+          <DashboardHeader user={user} notificationCount={unreadNotificationCount} />
 
           {activeSection === 'overview' && (
             <div className="space-y-8">
@@ -1802,62 +1833,123 @@ export default function AdminDashboard({
 
           {activeSection === 'notifications' && (
             <div className="space-y-6">
-              <div>
-                <h2 className="text-lg font-semibold">Notifications from teachers</h2>
-                <p className="text-sm text-gray-600">
-                  Review reports and notifications submitted by teachers for administrator follow-up.
-                </p>
-              </div>
-
               <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                <div>
+                  <h2 className="text-lg font-semibold">New registrations</h2>
+                  <p className="text-sm text-gray-600">
+                    View recent student and teacher registrations created in the system.
+                  </p>
+                </div>
                 <div className="flex flex-wrap gap-2 text-xs">
                   <button
                     type="button"
-                    className="inline-flex items-center px-3 py-1.5 rounded-full border border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
+                    onClick={() => setNotificationFilter('all')}
+                    className={`inline-flex items-center px-3 py-1.5 rounded-full border text-gray-700 hover:bg-gray-50 ${
+                      notificationFilter === 'all'
+                        ? 'border-blue-500 bg-blue-50 text-blue-700'
+                        : 'border-gray-300 bg-white'
+                    }`}
                   >
                     All
                   </button>
                   <button
                     type="button"
-                    className="inline-flex items-center px-3 py-1.5 rounded-full border border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
+                    onClick={() => setNotificationFilter('student')}
+                    className={`inline-flex items-center px-3 py-1.5 rounded-full border text-gray-700 hover:bg-gray-50 ${
+                      notificationFilter === 'student'
+                        ? 'border-blue-500 bg-blue-50 text-blue-700'
+                        : 'border-gray-300 bg-white'
+                    }`}
                   >
-                    Unread
+                    Students
                   </button>
                   <button
                     type="button"
-                    className="inline-flex items-center px-3 py-1.5 rounded-full border border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
+                    onClick={() => setNotificationFilter('teacher')}
+                    className={`inline-flex items-center px-3 py-1.5 rounded-full border text-gray-700 hover:bg-gray-50 ${
+                      notificationFilter === 'teacher'
+                        ? 'border-blue-500 bg-blue-50 text-blue-700'
+                        : 'border-gray-300 bg-white'
+                    }`}
                   >
-                    Resolved
+                    Teachers
                   </button>
                 </div>
-                <div className="text-xs text-gray-500">Future: connect to a notifications table or messaging system.</div>
               </div>
 
-              <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white">
-                <table className="min-w-full divide-y divide-gray-200 text-sm">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-4 py-2 text-left text-xs font-semibold text-gray-600">From</th>
-                      <th className="px-4 py-2 text-left text-xs font-semibold text-gray-600">Subject</th>
-                      <th className="px-4 py-2 text-left text-xs font-semibold text-gray-600">Message</th>
-                      <th className="px-4 py-2 text-center text-xs font-semibold text-gray-600">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-100">
-                    <tr className="hover:bg-gray-50">
-                      <td className="px-4 py-2 text-gray-900">Sample teacher</td>
-                      <td className="px-4 py-2 text-gray-700">Attendance concern</td>
-                      <td className="px-4 py-2 text-gray-600 text-xs">
-                        Placeholder notification. Connect this table to real teacher reports and messages.
-                      </td>
-                      <td className="px-4 py-2 text-center">
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-yellow-50 text-yellow-700 text-xs">
-                          Unread
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                <div className="lg:col-span-2 overflow-hidden rounded-lg border border-gray-200 bg-white">
+                  <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+                    <p className="text-xs text-gray-600">
+                      {filteredNotifications.length} notification{filteredNotifications.length === 1 ? '' : 's'}
+                    </p>
+                  </div>
+                  <div className="max-h-80 overflow-y-auto divide-y divide-gray-100">
+                    {filteredNotifications.map(n => (
+                      <button
+                        key={n.id}
+                        type="button"
+                        onClick={() => setSelectedNotificationUser(n.relatedUser || null)}
+                        className="w-full text-left px-4 py-3 hover:bg-gray-50 flex items-start justify-between gap-3"
+                      >
+                        <div>
+                          <p className="text-sm text-gray-900">{n.message}</p>
+                          {n.relatedUser && (
+                            <p className="mt-0.5 text-xs text-gray-600">
+                              {n.relatedUser.name} · {n.relatedUser.email}
+                            </p>
+                          )}
+                          <p className="mt-0.5 text-[11px] text-gray-400">
+                            {new Date(n.createdAt).toLocaleString()}
+                          </p>
+                        </div>
+                        <span className="mt-1 inline-flex items-center px-2 py-0.5 rounded-full text-[11px] border border-gray-200 text-gray-600">
+                          {n.studentId ? 'Student' : n.teacherId ? 'Teacher' : 'User'}
                         </span>
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
+                      </button>
+                    ))}
+                    {filteredNotifications.length === 0 && (
+                      <div className="px-4 py-6 text-center text-xs text-gray-400">
+                        No registration notifications yet.
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="border border-gray-200 rounded-lg bg-white p-4">
+                  <h3 className="text-sm font-semibold text-gray-900 mb-2">Selected user</h3>
+                  {selectedNotificationUser ? (
+                    <div className="space-y-1 text-sm">
+                      <p className="font-medium text-gray-900">{selectedNotificationUser.name}</p>
+                      <p className="text-gray-700 text-xs">{selectedNotificationUser.email}</p>
+                      <p className="text-gray-600 text-xs mt-2">
+                        Role: {selectedNotificationUser.role}
+                      </p>
+                      {selectedNotificationUser.role === 'student' && (
+                        <>
+                          <p className="text-gray-600 text-xs">
+                            Department: {selectedNotificationUser.studentDepartment || 'N/A'}
+                          </p>
+                          <p className="text-gray-600 text-xs">
+                            Year level: {selectedNotificationUser.studentYear || 'N/A'}
+                          </p>
+                        </>
+                      )}
+                      {selectedNotificationUser.role === 'teacher' && (
+                        <>
+                          <p className="text-gray-600 text-xs">
+                            Course: {selectedNotificationUser.teacherCourse || 'N/A'}
+                          </p>
+                          <p className="text-gray-600 text-xs">
+                            Level: {selectedNotificationUser.teacherLevel || 'N/A'}
+                          </p>
+                        </>
+                      )}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-gray-400">Select a notification to see user details.</p>
+                  )}
+                </div>
               </div>
             </div>
           )}

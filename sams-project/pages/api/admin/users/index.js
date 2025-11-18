@@ -1,6 +1,7 @@
 import bcrypt from 'bcryptjs';
 import prisma from '../../../../lib/prisma';
 import { getUserFromRequest } from '../../../../lib/auth';
+import { sendAdminNewUserEmail } from '../../../../lib/email';
 
 const ALLOWED_ROLES = ['student', 'teacher'];
 
@@ -96,6 +97,26 @@ export default async function handler(req, res) {
       },
     });
 
+    const notificationMessage =
+      role === 'student'
+        ? `New Student registered — ${user.name}`
+        : `New Teacher registered — ${user.name}`;
+
+    const notification = await prisma.notification.create({
+      data: {
+        message: notificationMessage,
+        studentId: role === 'student' ? user.id : null,
+        teacherId: role === 'teacher' ? user.id : null,
+        type: 'registration',
+      },
+    });
+
+    await sendAdminNewUserEmail({
+      name: user.name,
+      email: user.email,
+      role: user.role,
+    });
+
     return res.status(201).json({
       success: true,
       user: {
@@ -108,6 +129,7 @@ export default async function handler(req, res) {
         studentDepartment: user.studentDepartment,
         studentYear: user.studentYear,
       },
+      notification,
       message: 'User created successfully',
     });
   } catch (error) {
