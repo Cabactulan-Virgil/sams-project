@@ -5,6 +5,10 @@ import DashboardHeader from '../layout/DashboardHeader';
 export default function TeacherDashboard({ user, classes = [], subjects = [], students = [] }) {
   const [activeSection, setActiveSection] = useState('overview');
 
+  const [notifications, setNotifications] = useState([]);
+  const [notificationsLoading, setNotificationsLoading] = useState(false);
+  const [notificationsError, setNotificationsError] = useState('');
+
   const [attendanceDate, setAttendanceDate] = useState(() => {
     const today = new Date();
     const year = today.getFullYear();
@@ -46,6 +50,30 @@ export default function TeacherDashboard({ user, classes = [], subjects = [], st
   const [attendanceFilterName, setAttendanceFilterName] = useState('');
   const [attendanceFilterDepartment, setAttendanceFilterDepartment] = useState('');
   const [attendanceFilterYear, setAttendanceFilterYear] = useState('');
+
+  useEffect(() => {
+    async function loadNotifications() {
+      setNotificationsLoading(true);
+      setNotificationsError('');
+
+      try {
+        const res = await fetch('/api/teacher/notifications');
+        const data = await res.json().catch(() => ({}));
+
+        if (!res.ok) {
+          throw new Error(data.message || 'Failed to load notifications');
+        }
+
+        setNotifications(Array.isArray(data.notifications) ? data.notifications : []);
+      } catch (err) {
+        setNotificationsError(err.message || 'Failed to load notifications');
+      } finally {
+        setNotificationsLoading(false);
+      }
+    }
+
+    loadNotifications();
+  }, []);
 
   async function handleLoadAttendanceStudents(e) {
     e.preventDefault();
@@ -440,20 +468,43 @@ export default function TeacherDashboard({ user, classes = [], subjects = [], st
           )}
 
           {activeSection === 'logs' && (
-            <section className="space-y-2">
-              <h2 className="text-lg font-semibold">Notification logs</h2>
-              <p className="text-sm text-gray-600">
-                Logs in to record attendance for assigned classes.
-              </p>
-              <p className="text-sm text-gray-600">
-                Updates attendance records (Present, Late, Absent).
-              </p>
-              <p className="text-sm text-gray-600">
-                Generates reports and summaries per subject.
-              </p>
-              <p className="mt-2 text-xs text-gray-500">
-                This section can be extended later to show a detailed eLogs history for attendance notifications.
-              </p>
+            <section className="space-y-4">
+              <div>
+                <h2 className="text-lg font-semibold">Notification logs</h2>
+                <p className="text-sm text-gray-600">
+                  Recent notifications related to your classes and students.
+                </p>
+              </div>
+
+              {notificationsLoading && (
+                <p className="text-xs text-gray-500">Loading notifications...</p>
+              )}
+
+              {notificationsError && (
+                <p className="text-xs text-red-600">{notificationsError}</p>
+              )}
+
+              {!notificationsLoading && !notificationsError && (
+                <div className="rounded-lg border border-gray-200 bg-white p-3 text-sm">
+                  {notifications && notifications.length > 0 ? (
+                    <ul className="space-y-2">
+                      {notifications.map(n => (
+                        <li
+                          key={n.id}
+                          className="border border-gray-100 rounded-md px-3 py-2 bg-gray-50"
+                        >
+                          <p className="text-gray-900 text-sm mb-1">{n.message}</p>
+                          <p className="text-[11px] text-gray-500">
+                            {n.createdAt ? new Date(n.createdAt).toLocaleString() : ''}
+                          </p>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="text-xs text-gray-400">No notifications yet.</p>
+                  )}
+                </div>
+              )}
             </section>
           )}
 

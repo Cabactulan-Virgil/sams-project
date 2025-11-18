@@ -1,9 +1,9 @@
-import StudentDashboardLayout from '../../components/student/StudentDashboardLayout';
+import StudentDashboardShell from '../../components/student/StudentDashboardShell';
 import { getUserFromRequest } from '../../lib/auth';
 import prisma from '../../lib/prisma';
 
-export default function StudentPage({ user, summary }) {
-  return <StudentDashboardLayout user={user} summary={summary} />;
+export default function StudentPage({ user, summary, subjects }) {
+  return <StudentDashboardShell user={user} summary={summary} subjects={subjects} />;
 }
 
 export async function getServerSideProps({ req }) {
@@ -41,5 +41,44 @@ export async function getServerSideProps({ req }) {
     attendancePercentage,
   };
 
-  return { props: { user, summary } };
+  const enrollmentRows = await prisma.enrollment.findMany({
+    where: {
+      studentId: user.id,
+    },
+    select: {
+      id: true,
+      subject: {
+        select: {
+          id: true,
+          code: true,
+          name: true,
+        },
+      },
+      class: {
+        select: {
+          id: true,
+          name: true,
+        },
+      },
+      teacher: {
+        select: {
+          id: true,
+          name: true,
+        },
+      },
+    },
+  });
+
+  const subjects = enrollmentRows.map(row => ({
+    enrollmentId: row.id,
+    subjectId: row.subject ? row.subject.id : null,
+    subjectCode: row.subject ? row.subject.code : '',
+    subjectName: row.subject ? row.subject.name : '',
+    classId: row.class ? row.class.id : null,
+    className: row.class ? row.class.name : '',
+    teacherId: row.teacher ? row.teacher.id : null,
+    teacherName: row.teacher ? row.teacher.name : '',
+  }));
+
+  return { props: { user, summary, subjects } };
 }

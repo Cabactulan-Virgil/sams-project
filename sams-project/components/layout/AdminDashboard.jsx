@@ -239,6 +239,9 @@ export default function AdminDashboard({
     return acc;
   }, {});
 
+  const teacherCoursesForSelect = Array.from(new Set(teacherUsers.map(t => t.teacherCourse).filter(Boolean)));
+  const teacherLevelsForSelect = Array.from(new Set(teacherUsers.map(t => t.teacherLevel).filter(Boolean)));
+
   const subjectDepartmentYearMap =
     subjectStudentCounts && Object.keys(subjectStudentCounts).length > 0
       ? subjectStudentCounts
@@ -2309,29 +2312,63 @@ export default function AdminDashboard({
                     <label htmlFor="new-teacher-course" className="block text-xs font-medium text-gray-700 mb-1">
                       Course
                     </label>
-                    <input
-                      id="new-teacher-course"
-                      name="teacherCourse"
-                      type="text"
-                      value={newTeacherForm.teacherCourse}
-                      onChange={handleNewTeacherFormChange}
-                      placeholder="e.g. Hospitality Management, Information Technology"
-                      className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                    />
+                    {teacherCoursesForSelect && teacherCoursesForSelect.length > 0 ? (
+                      <select
+                        id="new-teacher-course"
+                        name="teacherCourse"
+                        value={newTeacherForm.teacherCourse}
+                        onChange={handleNewTeacherFormChange}
+                        className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                      >
+                        <option value="">Select course</option>
+                        {teacherCoursesForSelect.map(course => (
+                          <option key={course} value={course}>
+                            {course}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <input
+                        id="new-teacher-course"
+                        name="teacherCourse"
+                        type="text"
+                        value={newTeacherForm.teacherCourse}
+                        onChange={handleNewTeacherFormChange}
+                        placeholder="e.g. Hospitality Management, Information Technology"
+                        className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                      />
+                    )}
                   </div>
                   <div>
                     <label htmlFor="new-teacher-level" className="block text-xs font-medium text-gray-700 mb-1">
                       Level
                     </label>
-                    <input
-                      id="new-teacher-level"
-                      name="teacherLevel"
-                      type="text"
-                      value={newTeacherForm.teacherLevel}
-                      onChange={handleNewTeacherFormChange}
-                      placeholder="e.g. 1, 2, 3"
-                      className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                    />
+                    {teacherLevelsForSelect && teacherLevelsForSelect.length > 0 ? (
+                      <select
+                        id="new-teacher-level"
+                        name="teacherLevel"
+                        value={newTeacherForm.teacherLevel}
+                        onChange={handleNewTeacherFormChange}
+                        className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                      >
+                        <option value="">Select level</option>
+                        {teacherLevelsForSelect.map(level => (
+                          <option key={level} value={level}>
+                            {level}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <input
+                        id="new-teacher-level"
+                        name="teacherLevel"
+                        type="text"
+                        value={newTeacherForm.teacherLevel}
+                        onChange={handleNewTeacherFormChange}
+                        placeholder="e.g. 1, 2, 3"
+                        className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                      />
+                    )}
                   </div>
                 </div>
                 <div className="flex justify-end gap-2">
