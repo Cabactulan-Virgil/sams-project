@@ -17,6 +17,8 @@ export default function AdminDashboard({
   const [activeSection, setActiveSection] = useState('overview');
   const [studentSearch, setStudentSearch] = useState('');
   const [studentSearchDraft, setStudentSearchDraft] = useState('');
+  const [studentDepartmentFilter, setStudentDepartmentFilter] = useState('');
+  const [studentYearFilter, setStudentYearFilter] = useState('');
   const [teacherYearFilter, setTeacherYearFilter] = useState('');
   const [teacherDepartmentFilter, setTeacherDepartmentFilter] = useState('');
   const [subjectSearch, setSubjectSearch] = useState('');
@@ -55,20 +57,23 @@ export default function AdminDashboard({
   const teacherUsers = userList.filter(u => u.role === 'teacher');
 
   const filteredStudentUsers = studentUsers.filter(s => {
-    if (!studentSearch) return true;
-    const terms = studentSearch
-      .toLowerCase()
-      .split(/\s+/)
-      .filter(Boolean);
-    if (terms.length === 0) return true;
+    if (studentSearch) {
+      const term = studentSearch.toLowerCase().trim();
+      if (!term) return false;
+      if (!s.name || !s.name.toLowerCase().includes(term)) return false;
+    }
 
-    return terms.every(term =>
-      String(s.id).includes(term) ||
-      (s.name && s.name.toLowerCase().includes(term)) ||
-      (s.email && s.email.toLowerCase().includes(term)) ||
-      (s.studentDepartment && s.studentDepartment.toLowerCase().includes(term)) ||
-      (s.studentYear && s.studentYear.toLowerCase().includes(term))
-    );
+    if (studentDepartmentFilter) {
+      const dept = (s.studentDepartment || '').toLowerCase().trim();
+      if (dept !== studentDepartmentFilter.toLowerCase().trim()) return false;
+    }
+
+    if (studentYearFilter) {
+      const yearStr = s.studentYear != null ? String(s.studentYear).toLowerCase().trim() : '';
+      if (yearStr !== studentYearFilter.toLowerCase().trim()) return false;
+    }
+
+    return true;
   });
 
   const filteredTeacherUsers = teacherUsers.filter(t => {
@@ -197,6 +202,20 @@ export default function AdminDashboard({
     acc[dept].years[year] = (acc[dept].years[year] || 0) + 1;
     return acc;
   }, {});
+
+  const studentDepartmentsForSelect = Object.keys(studentDepartmentYearMap);
+  const studentYearsForSelectByDept = Object.entries(studentDepartmentYearMap).reduce(
+    (acc, [dept, info]) => {
+      acc[dept] = Object.keys(info.years || {});
+      return acc;
+    },
+    {}
+  );
+  const allStudentYearsForSelect = Array.from(
+    new Set(
+      Object.values(studentYearsForSelectByDept).flat()
+    )
+  );
 
   const enrollmentDepartmentYearMap = enrollmentList.reduce((acc, e) => {
     const dept = e.student?.studentDepartment || 'Unassigned';
@@ -959,25 +978,51 @@ export default function AdminDashboard({
                       value={studentSearchDraft}
                       onChange={(e) => setStudentSearchDraft(e.target.value)}
                       onKeyDown={(e) => {
-                        if (e.key === 'Enter') setStudentSearch(studentSearchDraft);
+                        if (e.key === 'Enter') setStudentSearch(studentSearchDraft.trim());
                       }}
-                      placeholder="Filter by ID, name, email, department, year"
+                      placeholder="Search by student name"
                       className="w-full md:w-56 px-3 py-1.5 border border-gray-300 rounded-md text-xs shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                     />
                     <button
                       type="button"
-                      onClick={() => setStudentSearch(studentSearchDraft)}
+                      onClick={() => setStudentSearch(studentSearchDraft.trim())}
                       className="inline-flex items-center px-3 py-1.5 rounded-md border border-gray-300 bg-white text-xs font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                     >
-                      Filter
+                      Search
                     </button>
                   </div>
                 </div>
               </div>
 
-              {Object.keys(enrollmentDepartmentYearMap).length > 0 && (
+              {(studentDepartmentFilter || studentYearFilter) && (
+                <div className="flex flex-wrap items-center gap-2 text-xs text-gray-700">
+                  <span>Active filters:</span>
+                  {studentDepartmentFilter && (
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
+                      Department: {studentDepartmentFilter}
+                    </span>
+                  )}
+                  {studentYearFilter && (
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
+                      Year: {studentYearFilter}
+                    </span>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setStudentDepartmentFilter('');
+                      setStudentYearFilter('');
+                    }}
+                    className="inline-flex items-center px-2 py-0.5 rounded-full border border-gray-300 bg-white text-[11px] text-gray-700 hover:bg-gray-50"
+                  >
+                    Clear filters
+                  </button>
+                </div>
+              )}
+
+              {Object.keys(studentDepartmentYearMap).length > 0 && (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {Object.entries(enrollmentDepartmentYearMap).map(([dept, info]) => (
+                  {Object.entries(studentDepartmentYearMap).map(([dept, info]) => (
                     <div
                       key={dept}
                       className="rounded-lg border border-blue-100 bg-blue-50/70 px-3 py-2 text-xs flex flex-col gap-1"
@@ -994,25 +1039,24 @@ export default function AdminDashboard({
                         <button
                           type="button"
                           onClick={() => {
-                            setStudentSearch(dept);
-                            setStudentSearchDraft(dept);
+                            setStudentDepartmentFilter(dept);
+                            setStudentYearFilter('');
                           }}
                           className="inline-flex items-center px-2 py-1 rounded-md bg-white text-[11px] font-medium text-blue-700 border border-blue-200 hover:bg-blue-50"
                         >
-                          Filter
+                          By department
                         </button>
                       </div>
                       <div className="flex flex-wrap gap-1 mt-1">
                         {Object.entries(info.years).map(([year, count]) => {
                           const label = year === 'N/A' ? 'Year N/A' : `Year ${year}`;
-                          const term = `${dept} ${year}`;
                           return (
                             <button
                               key={year}
                               type="button"
                               onClick={() => {
-                                setStudentSearch(term);
-                                setStudentSearchDraft(term);
+                                setStudentDepartmentFilter(dept);
+                                setStudentYearFilter(year);
                               }}
                               className="inline-flex items-center px-2 py-0.5 rounded-full bg-white text-[11px] text-blue-800 border border-blue-200 hover:bg-blue-50"
                             >
@@ -1206,9 +1250,9 @@ export default function AdminDashboard({
                 </div>
               </div>
 
-              {Object.keys(studentDepartmentYearMap).length > 0 && (
+              {Object.keys(enrollmentDepartmentYearMap).length > 0 && (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {Object.entries(studentDepartmentYearMap).map(([dept, info]) => (
+                  {Object.entries(enrollmentDepartmentYearMap).map(([dept, info]) => (
                     <div
                       key={dept}
                       className="rounded-lg border border-blue-100 bg-blue-50/70 px-3 py-2 text-xs flex flex-col gap-1"
@@ -2069,29 +2113,63 @@ export default function AdminDashboard({
                     <label htmlFor="new-student-department" className="block text-xs font-medium text-gray-700 mb-1">
                       Department
                     </label>
-                    <input
-                      id="new-student-department"
-                      name="studentDepartment"
-                      type="text"
-                      value={newStudentForm.studentDepartment}
-                      onChange={handleNewStudentFormChange}
-                      placeholder="e.g. BSIT, BSHM, BSCJ"
-                      className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                    />
+                    {studentDepartmentsForSelect && studentDepartmentsForSelect.length > 0 ? (
+                      <select
+                        id="new-student-department"
+                        name="studentDepartment"
+                        value={newStudentForm.studentDepartment}
+                        onChange={handleNewStudentFormChange}
+                        className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                      >
+                        <option value="">Select department</option>
+                        {studentDepartmentsForSelect.map(dept => (
+                          <option key={dept} value={dept}>
+                            {dept}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <input
+                        id="new-student-department"
+                        name="studentDepartment"
+                        type="text"
+                        value={newStudentForm.studentDepartment}
+                        onChange={handleNewStudentFormChange}
+                        placeholder="e.g. BSIT, BSHM, BSCJ"
+                        className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                      />
+                    )}
                   </div>
                   <div>
                     <label htmlFor="new-student-year" className="block text-xs font-medium text-gray-700 mb-1">
                       Year level
                     </label>
-                    <input
-                      id="new-student-year"
-                      name="studentYear"
-                      type="text"
-                      value={newStudentForm.studentYear}
-                      onChange={handleNewStudentFormChange}
-                      placeholder="e.g. 1, 2, 3"
-                      className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                    />
+                    {allStudentYearsForSelect && allStudentYearsForSelect.length > 0 ? (
+                      <select
+                        id="new-student-year"
+                        name="studentYear"
+                        value={newStudentForm.studentYear}
+                        onChange={handleNewStudentFormChange}
+                        className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                      >
+                        <option value="">Select year level</option>
+                        {allStudentYearsForSelect.map(year => (
+                          <option key={year} value={year}>
+                            {year}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <input
+                        id="new-student-year"
+                        name="studentYear"
+                        type="text"
+                        value={newStudentForm.studentYear}
+                        onChange={handleNewStudentFormChange}
+                        placeholder="e.g. 1, 2, 3"
+                        className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                      />
+                    )}
                   </div>
                 </div>
                 <div className="flex justify-end gap-2">

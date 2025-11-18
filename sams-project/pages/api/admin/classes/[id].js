@@ -43,7 +43,22 @@ export default async function handler(req, res) {
 
   if (req.method === 'DELETE') {
     try {
-      await prisma.classSection.delete({ where: { id: classId } });
+      await prisma.$transaction(async tx => {
+        const enrollments = await tx.enrollment.findMany({
+          where: { classId },
+          select: { id: true },
+        });
+
+        const enrollmentIds = enrollments.map(e => e.id);
+
+        if (enrollmentIds.length > 0) {
+          await tx.attendance.deleteMany({ where: { enrollmentId: { in: enrollmentIds } } });
+          await tx.enrollment.deleteMany({ where: { id: { in: enrollmentIds } } });
+        }
+
+        await tx.classSection.delete({ where: { id: classId } });
+      });
+
       return res.status(204).end();
     } catch (error) {
       console.error('Admin delete class error', error);

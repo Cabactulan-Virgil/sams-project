@@ -100,6 +100,28 @@ export default async function handler(req, res) {
       },
     });
 
+    const notificationMessage =
+      role === 'student'
+        ? `New Student registered — ${user.name}`
+        : role === 'teacher'
+        ? `New Teacher registered — ${user.name}`
+        : null;
+
+    if (notificationMessage) {
+      try {
+        await prisma.notification.create({
+          data: {
+            message: notificationMessage,
+            studentId: role === 'student' ? user.id : null,
+            teacherId: role === 'teacher' ? user.id : null,
+            type: 'registration',
+          },
+        });
+      } catch (notificationError) {
+        console.error('Failed to create registration notification', notificationError);
+      }
+    }
+
     const payload = {
       id: user.id,
       name: user.name,
