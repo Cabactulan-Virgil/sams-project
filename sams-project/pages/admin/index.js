@@ -2,6 +2,11 @@ import AdminDashboard from '../../components/layout/AdminDashboard';
 import { getUserFromRequest } from '../../lib/auth';
 import prisma from '../../lib/prisma';
 
+function toIso(value) {
+  if (!value) return value;
+  return value instanceof Date ? value.toISOString() : value;
+}
+
 export default function AdminPage({
   user,
   overview,
@@ -35,7 +40,7 @@ export async function getServerSideProps({ req }) {
     return { redirect: { destination: '/login', permanent: false } };
   }
 
-  const [studentCount, teacherCount, classRows, userRows, subjectRows, enrollmentRows, notificationRows] = await Promise.all([
+  const [studentCount, teacherCount, classRows, userRows, subjectRows, enrollmentRows] = await Promise.all([
     prisma.user.count({ where: { role: 'student' } }),
     prisma.user.count({ where: { role: 'teacher' } }),
     prisma.classSection.findMany(),
@@ -44,11 +49,11 @@ export async function getServerSideProps({ req }) {
     prisma.enrollment.findMany({
       select: {
         id: true,
-        studentId: true,
-        teacherId: true,
-        subjectId: true,
-        classId: true,
-        student: {
+        student_id: true,
+        teacher_id: true,
+        subject_id: true,
+        class_id: true,
+        users_enrollment_student_idTousers: {
           select: {
             id: true,
             name: true,
@@ -57,33 +62,30 @@ export async function getServerSideProps({ req }) {
             studentYear: true,
           },
         },
-        teacher: {
+        users_enrollment_teacher_idTousers: {
           select: {
             id: true,
             name: true,
             email: true,
           },
         },
-        subject: {
+        subjects: {
           select: { id: true, code: true, name: true },
         },
-        class: {
+        classes: {
           select: { id: true, name: true },
         },
       },
     }),
-    prisma.notification.findMany({
-      where: { type: 'registration' },
-      orderBy: { createdAt: 'desc' },
-      take: 50,
-    }),
   ]);
+
+  const notificationRows = [];
 
   const overview = { studentCount, teacherCount, classCount: classRows.length };
 
   const subjectStudentCounts = enrollmentRows.reduce((acc, row) => {
-    const dept = row.student?.studentDepartment || 'Unassigned';
-    const year = row.student?.studentYear || 'N/A';
+    const dept = row.users_enrollment_student_idTousers?.studentDepartment || 'Unassigned';
+    const year = row.users_enrollment_student_idTousers?.studentYear || 'N/A';
 
     if (!acc[dept]) {
       acc[dept] = { total: 0, years: {} };
@@ -96,7 +98,7 @@ export async function getServerSideProps({ req }) {
   }, {});
 
   const rawSubjectFilterTags = enrollmentRows.reduce((acc, row) => {
-    const subjectId = row.subject?.id;
+    const subjectId = row.subjects?.id;
     if (!subjectId) return acc;
 
     if (!acc[subjectId]) {
@@ -106,8 +108,8 @@ export async function getServerSideProps({ req }) {
       };
     }
 
-    const dept = row.student?.studentDepartment;
-    const year = row.student?.studentYear;
+    const dept = row.users_enrollment_student_idTousers?.studentDepartment;
+    const year = row.users_enrollment_student_idTousers?.studentYear;
 
     if (dept) acc[subjectId].departments.add(dept);
     if (year) acc[subjectId].years.add(year);
@@ -124,16 +126,36 @@ export async function getServerSideProps({ req }) {
     return acc;
   }, {});
 
+  const safeUsers = userRows.map(u => ({
+    ...u,
+    createdAt: toIso(u.createdAt),
+  }));
+
+  const safeClasses = classRows.map(c => ({
+    ...c,
+    created_at: toIso(c.created_at),
+  }));
+
+  const safeSubjects = subjectRows.map(s => ({
+    ...s,
+    created_at: toIso(s.created_at),
+  }));
+
+  const safeEnrollments = enrollmentRows.map(e => ({
+    ...e,
+    created_at: toIso(e.created_at),
+  }));
+
   return {
     props: {
       user,
       overview,
-      users: userRows,
-      classes: classRows,
-      subjects: subjectRows,
+      users: safeUsers,
+      classes: safeClasses,
+      subjects: safeSubjects,
       subjectStudentCounts,
       subjectFilterTags,
-      enrollments: enrollmentRows,
+      enrollments: safeEnrollments,
       notifications: notificationRows,
     },
   };

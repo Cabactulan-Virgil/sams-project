@@ -15,7 +15,9 @@ export async function getServerSideProps({ req }) {
     _count: { id: true },
     where: {
       enrollment: {
-        studentId: user.id,
+        is: {
+          student_id: user.id,
+        },
       },
     },
   });
@@ -25,9 +27,9 @@ export async function getServerSideProps({ req }) {
   let absentCount = 0;
 
   attendanceGroups.forEach(row => {
-    if (row.status === 'PRESENT') presentCount = row._count.id;
-    if (row.status === 'LATE') lateCount = row._count.id;
-    if (row.status === 'ABSENT') absentCount = row._count.id;
+    if (row.status === 'present') presentCount = row._count.id;
+    if (row.status === 'late') lateCount = row._count.id;
+    if (row.status === 'absent') absentCount = row._count.id;
   });
 
   const totalSessions = presentCount + lateCount + absentCount;
@@ -43,24 +45,24 @@ export async function getServerSideProps({ req }) {
 
   const enrollmentRows = await prisma.enrollment.findMany({
     where: {
-      studentId: user.id,
+      student_id: user.id,
     },
     select: {
       id: true,
-      subject: {
+      subjects: {
         select: {
           id: true,
           code: true,
           name: true,
         },
       },
-      class: {
+      classes: {
         select: {
           id: true,
           name: true,
         },
       },
-      teacher: {
+      users_enrollment_teacher_idTousers: {
         select: {
           id: true,
           name: true,
@@ -71,13 +73,13 @@ export async function getServerSideProps({ req }) {
 
   const subjects = enrollmentRows.map(row => ({
     enrollmentId: row.id,
-    subjectId: row.subject ? row.subject.id : null,
-    subjectCode: row.subject ? row.subject.code : '',
-    subjectName: row.subject ? row.subject.name : '',
-    classId: row.class ? row.class.id : null,
-    className: row.class ? row.class.name : '',
-    teacherId: row.teacher ? row.teacher.id : null,
-    teacherName: row.teacher ? row.teacher.name : '',
+    subjectId: row.subjects ? row.subjects.id : null,
+    subjectCode: row.subjects ? row.subjects.code : '',
+    subjectName: row.subjects ? row.subjects.name : '',
+    classId: row.classes ? row.classes.id : null,
+    className: row.classes ? row.classes.name : '',
+    teacherId: row.users_enrollment_teacher_idTousers ? row.users_enrollment_teacher_idTousers.id : null,
+    teacherName: row.users_enrollment_teacher_idTousers ? row.users_enrollment_teacher_idTousers.name : '',
   }));
 
   return { props: { user, summary, subjects } };

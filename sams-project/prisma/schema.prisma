@@ -8,128 +8,93 @@ datasource db {
 }
 
 model User {
-  id           Int      @id @default(autoincrement())
-  name         String
-  email        String   @unique
-  passwordHash String   @map("password_hash")
-  role         String
-
-  teacherProgram    String?
-  teacherCourse     String?
-  teacherLevel      String?
-  studentDepartment String?
-  studentYear       String?
-
-  enrollmentsAsStudent Enrollment[] @relation("StudentEnrollments")
-  enrollmentsAsTeacher Enrollment[] @relation("TeacherEnrollments")
+  id                                      Int          @id @default(autoincrement()) @db.UnsignedInt
+  name                                    String       @db.VarChar(100)
+  email                                   String       @unique(map: "email") @db.VarChar(100)
+  passwordHash                            String       @map("password_hash") @db.VarChar(255)
+  role                                    UserRole
+  teacherProgram                          String?      @map("program") @db.VarChar(100)
+  teacherCourse                           String?      @map("course") @db.VarChar(100)
+  teacherLevel                            String?      @map("level") @db.VarChar(50)
+  studentDepartment                       String?      @map("department") @db.VarChar(100)
+  studentYear                             String?      @map("year_level") @db.VarChar(50)
+  createdAt                               DateTime     @default(now()) @map("created_at") @db.DateTime(0)
+  attendance                              Attendance[]
+  enrollment_enrollment_student_idTousers Enrollment[] @relation("enrollment_student_idTousers")
+  enrollment_enrollment_teacher_idTousers Enrollment[] @relation("enrollment_teacher_idTousers")
 
   @@map("users")
 }
 
 model ClassSection {
-  id          Int          @id @default(autoincrement())
-  name        String
-  description String?
-
-  enrollments Enrollment[]
+  id          Int          @id @default(autoincrement()) @db.UnsignedInt
+  name        String       @db.VarChar(100)
+  section     String?      @db.VarChar(50)
+  school_year String?      @db.VarChar(20)
+  created_at  DateTime     @default(now()) @db.DateTime(0)
+  enrollment  Enrollment[]
 
   @@map("classes")
 }
 
 model Subject {
-  id          Int          @id @default(autoincrement())
-  code        String
-  name        String
-  description String?
-
-  enrollments Enrollment[]
+  id          Int          @id @default(autoincrement()) @db.UnsignedInt
+  code        String       @unique(map: "uq_subject_code") @db.VarChar(50)
+  name        String       @db.VarChar(150)
+  description String?      @db.VarChar(255)
+  created_at  DateTime     @default(now()) @db.DateTime(0)
+  enrollment  Enrollment[]
 
   @@map("subjects")
 }
 
 model Enrollment {
-  id         Int        @id @default(autoincrement())
+  id                                 Int           @id @default(autoincrement()) @db.UnsignedInt
+  student_id                         Int           @db.UnsignedInt
+  subject_id                         Int           @db.UnsignedInt
+  class_id                           Int?          @db.UnsignedInt
+  teacher_id                         Int           @db.UnsignedInt
+  created_at                         DateTime      @default(now()) @db.DateTime(0)
+  attendance                         Attendance[]
+  classes                            ClassSection? @relation(fields: [class_id], references: [id], onUpdate: Restrict, map: "fk_enrollment_class")
+  users_enrollment_student_idTousers User          @relation("enrollment_student_idTousers", fields: [student_id], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "fk_enrollment_student")
+  subjects                           Subject       @relation(fields: [subject_id], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "fk_enrollment_subject")
+  users_enrollment_teacher_idTousers User          @relation("enrollment_teacher_idTousers", fields: [teacher_id], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "fk_enrollment_teacher")
 
-  studentId  Int
-  teacherId  Int
-  subjectId  Int
-  classId    Int
-
-  student    User        @relation("StudentEnrollments", fields: [studentId], references: [id])
-  teacher    User        @relation("TeacherEnrollments", fields: [teacherId], references: [id])
-  subject    Subject     @relation(fields: [subjectId], references: [id])
-  class      ClassSection @relation(fields: [classId], references: [id])
-
-  attendanceRecords Attendance[]
-
+  @@unique([student_id, subject_id, class_id, teacher_id], map: "uq_enrollment")
+  @@index([class_id], map: "fk_enrollment_class")
+  @@index([student_id], map: "idx_enrollment_student")
+  @@index([subject_id], map: "idx_enrollment_subject")
+  @@index([teacher_id], map: "idx_enrollment_teacher")
   @@map("enrollment")
 }
 
 model Attendance {
-  id           Int        @id @default(autoincrement())
-  enrollmentId Int
-  date         DateTime
-  status       AttendanceStatus
-  remark       String?
+  id              Int               @id @default(autoincrement()) @db.UnsignedInt
+  enrollment_id   Int               @db.UnsignedInt
+  attendance_date DateTime          @db.Date
+  status          attendance_status
+  recorded_by     Int               @db.UnsignedInt
+  remarks         String?           @db.VarChar(255)
+  created_at      DateTime          @default(now()) @db.DateTime(0)
+  updated_at      DateTime?         @db.DateTime(0)
+  enrollment      Enrollment        @relation(fields: [enrollment_id], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "fk_attendance_enrollment")
+  users           User              @relation(fields: [recorded_by], references: [id], onUpdate: Restrict, map: "fk_attendance_recorded_by")
 
-  enrollment   Enrollment @relation(fields: [enrollmentId], references: [id])
-
-  @@unique([enrollmentId, date])
+  @@unique([enrollment_id, attendance_date], map: "uq_attendance")
+  @@index([recorded_by], map: "fk_attendance_recorded_by")
+  @@index([attendance_date], map: "idx_attendance_date")
   @@map("attendance")
 }
 
-enum AttendanceStatus {
-  PRESENT
-  LATE
-  ABSENT
+enum UserRole {
+  admin
+  student
+  teacher
 }
 
-model ClassSession {
-  id        Int      @id @default(autoincrement())
-  classId   Int
-  subjectId Int?
-  teacherId Int
-  date      DateTime
-  start     DateTime
-  createdAt DateTime @default(now())
-
-  @@map("class_sessions")
-}
-
-model SessionArrival {
-  id           Int      @id @default(autoincrement())
-  sessionId    Int
-  enrollmentId Int
-  arrivalTime  DateTime
-
-  @@map("session_arrivals")
-}
-
-model StudentReport {
-  id        Int      @id @default(autoincrement())
-  studentId Int
-  classId   Int?
-  subjectId Int?
-  teacherId Int?
-  date      DateTime
-  text      String
-  status    AttendanceStatus?
-  createdAt DateTime @default(now())
-
-  @@map("student_reports")
-}
-
-model Notification {
-  id        Int      @id @default(autoincrement())
-  message   String
-  studentId Int?
-  teacherId Int?
-  classId   Int?
-  subjectId Int?
-  reportId  Int?
-  type      String   @default("registration")
-  isRead    Boolean  @default(false)
-  createdAt DateTime @default(now())
-
-  @@map("notifications")
+enum attendance_status {
+  present
+  late
+  absent
 }

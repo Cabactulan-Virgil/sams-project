@@ -18,10 +18,10 @@ export default async function handler(req, res) {
   try {
     const enrollments = await prisma.enrollment.findMany({
       where: {
-        teacherId: user.id,
+        teacher_id: user.id,
         ...(q
           ? {
-              student: {
+              users_enrollment_student_idTousers: {
                 OR: [
                   { name: { contains: q, mode: 'insensitive' } },
                   { email: { contains: q, mode: 'insensitive' } },
@@ -31,14 +31,14 @@ export default async function handler(req, res) {
           : {}),
       },
       include: {
-        student: {
+        users_enrollment_student_idTousers: {
           select: {
             id: true,
             name: true,
             email: true,
           },
         },
-        attendanceRecords: {
+        attendance: {
           select: {
             status: true,
           },
@@ -49,7 +49,7 @@ export default async function handler(req, res) {
     const summaryByStudent = {};
 
     enrollments.forEach(enrollment => {
-      const s = enrollment.student;
+      const s = enrollment.users_enrollment_student_idTousers;
       if (!s) return;
 
       if (!summaryByStudent[s.id]) {
@@ -66,11 +66,11 @@ export default async function handler(req, res) {
 
       const summary = summaryByStudent[s.id];
 
-      enrollment.attendanceRecords.forEach(record => {
+      enrollment.attendance.forEach(record => {
         summary.totalSessions += 1;
-        if (record.status === 'PRESENT') summary.presentCount += 1;
-        else if (record.status === 'LATE') summary.lateCount += 1;
-        else if (record.status === 'ABSENT') summary.absentCount += 1;
+        if (record.status === 'present') summary.presentCount += 1;
+        else if (record.status === 'late') summary.lateCount += 1;
+        else if (record.status === 'absent') summary.absentCount += 1;
       });
     });
 

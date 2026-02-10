@@ -32,3 +32,8 @@ CREATE TABLE users (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (role_id) REFERENCES roles(id)
 );
+
+
+
+how to generate jwt token for authentication
+[Convert]::ToBase64String((1..64 | ForEach-Object {Get-Random -Maximum 256}))

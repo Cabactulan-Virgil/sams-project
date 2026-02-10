@@ -1,6 +1,15 @@
 import prisma from '../../../lib/prisma';
 import { getUserFromRequest } from '../../../lib/auth';
 
+function normalizeAttendanceStatus(status) {
+  if (!status) return status;
+  const s = String(status).trim().toLowerCase();
+  if (s === 'present') return 'present';
+  if (s === 'late') return 'late';
+  if (s === 'absent') return 'absent';
+  return status;
+}
+
 export default async function handler(req, res) {
   const user = getUserFromRequest(req);
 
@@ -18,12 +27,12 @@ export default async function handler(req, res) {
     try {
       const enrollments = await prisma.enrollment.findMany({
         where: {
-          teacherId: user.id,
-          classId: Number(classId),
-          subjectId: Number(subjectId),
+          teacher_id: user.id,
+          class_id: Number(classId),
+          subject_id: Number(subjectId),
         },
         include: {
-          student: {
+          users_enrollment_student_idTousers: {
             select: {
               id: true,
               name: true,
@@ -37,11 +46,11 @@ export default async function handler(req, res) {
 
       const students = enrollments.map(e => ({
         enrollmentId: e.id,
-        studentId: e.studentId,
-        name: e.student.name,
-        email: e.student.email,
-        department: e.student.studentDepartment,
-        year: e.student.studentYear,
+        studentId: e.student_id,
+        name: e.users_enrollment_student_idTousers.name,
+        email: e.users_enrollment_student_idTousers.email,
+        department: e.users_enrollment_student_idTousers.studentDepartment,
+        year: e.users_enrollment_student_idTousers.studentYear,
       }));
 
       return res.status(200).json({ students });
@@ -71,7 +80,7 @@ export default async function handler(req, res) {
     try {
       const allowedEnrollments = await prisma.enrollment.findMany({
         where: {
-          teacherId: user.id,
+          teacher_id: user.id,
           id: { in: enrollmentIds },
         },
         select: { id: true },
@@ -84,20 +93,22 @@ export default async function handler(req, res) {
         .map(r =>
           prisma.attendance.upsert({
             where: {
-              enrollmentId_date: {
-                enrollmentId: r.enrollmentId,
-                date: jsDate,
+              enrollment_id_attendance_date: {
+                enrollment_id: r.enrollmentId,
+                attendance_date: jsDate,
               },
             },
             create: {
-              enrollmentId: r.enrollmentId,
-              date: jsDate,
-              status: r.status,
-              remark: r.remark || null,
+              enrollment_id: r.enrollmentId,
+              attendance_date: jsDate,
+              status: normalizeAttendanceStatus(r.status),
+              recorded_by: user.id,
+              remarks: r.remark || null,
             },
             update: {
-              status: r.status,
-              remark: r.remark || null,
+              status: normalizeAttendanceStatus(r.status),
+              recorded_by: user.id,
+              remarks: r.remark || null,
             },
           })
         );
