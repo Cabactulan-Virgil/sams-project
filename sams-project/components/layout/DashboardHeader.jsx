@@ -3,7 +3,7 @@ export default function DashboardHeader({ user, notificationCount }) {
     try {
       await fetch('/api/auth/logout', { method: 'POST' });
     } catch (e) {
-      // ignore network errors, still try to navigate away
+     
     }
     if (typeof window !== 'undefined') {
       window.location.href = '/login';
