@@ -109,6 +109,7 @@ export default async function handler(req, res) {
               status: normalizeAttendanceStatus(r.status),
               recorded_by: user.id,
               remarks: r.remark || null,
+              updated_at: new Date(),
             },
           })
         );

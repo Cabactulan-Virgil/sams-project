@@ -27,10 +27,10 @@ export default async function handler(req, res) {
     try {
       const existing = await prisma.enrollment.findFirst({
         where: {
-          studentId: studentIdNum,
-          teacherId: teacherIdNum,
-          subjectId: subjectIdNum,
-          classId: classIdNum,
+          student_id: studentIdNum,
+          teacher_id: teacherIdNum,
+          subject_id: subjectIdNum,
+          class_id: classIdNum,
         },
       });
 
@@ -40,18 +40,18 @@ export default async function handler(req, res) {
 
       const enrollment = await prisma.enrollment.create({
         data: {
-          studentId: studentIdNum,
-          teacherId: teacherIdNum,
-          subjectId: subjectIdNum,
-          classId: classIdNum,
+          student_id: studentIdNum,
+          teacher_id: teacherIdNum,
+          subject_id: subjectIdNum,
+          class_id: classIdNum,
         },
         select: {
           id: true,
-          studentId: true,
-          teacherId: true,
-          subjectId: true,
-          classId: true,
-          student: {
+          student_id: true,
+          teacher_id: true,
+          subject_id: true,
+          class_id: true,
+          users_enrollment_student_idTousers: {
             select: {
               id: true,
               name: true,
@@ -60,17 +60,17 @@ export default async function handler(req, res) {
               studentYear: true,
             },
           },
-          teacher: {
+          users_enrollment_teacher_idTousers: {
             select: {
               id: true,
               name: true,
               email: true,
             },
           },
-          subject: {
+          subjects: {
             select: { id: true, code: true, name: true },
           },
-          class: {
+          classes: {
             select: { id: true, name: true },
           },
         },

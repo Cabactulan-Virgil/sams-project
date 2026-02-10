@@ -16,6 +16,9 @@ export default function AdminPage({
   subjectStudentCounts,
   subjectFilterTags,
   enrollments,
+  attendanceSummary,
+  recentAttendance,
+  subjectAttendanceReport,
   notifications,
 }) {
   return (
@@ -28,6 +31,9 @@ export default function AdminPage({
       subjectStudentCounts={subjectStudentCounts}
       subjectFilterTags={subjectFilterTags}
       enrollments={enrollments}
+      attendanceSummary={attendanceSummary}
+      recentAttendance={recentAttendance}
+      subjectAttendanceReport={subjectAttendanceReport}
       notifications={notifications}
     />
   );
@@ -40,9 +46,14 @@ export async function getServerSideProps({ req }) {
     return { redirect: { destination: '/login', permanent: false } };
   }
 
-  const [studentCount, teacherCount, classRows, userRows, subjectRows, enrollmentRows] = await Promise.all([
+  const today = new Date();
+  const from30Days = new Date(today);
+  from30Days.setDate(from30Days.getDate() - 30);
+
+  const [studentCount, teacherCount, programHeadCount, classRows, userRows, subjectRows, enrollmentRows, attendanceGroups, recentAttendanceRows, last30DaysAttendanceRows] = await Promise.all([
     prisma.user.count({ where: { role: 'student' } }),
     prisma.user.count({ where: { role: 'teacher' } }),
+    prisma.user.count({ where: { role: 'program_head' } }),
     prisma.classSection.findMany(),
     prisma.user.findMany(),
     prisma.subject.findMany(),
@@ -77,11 +88,73 @@ export async function getServerSideProps({ req }) {
         },
       },
     }),
+    prisma.attendance.groupBy({
+      by: ['status'],
+      _count: { id: true },
+    }),
+    prisma.attendance.findMany({
+      orderBy: [{ attendance_date: 'desc' }, { id: 'desc' }],
+      take: 50,
+      select: {
+        id: true,
+        enrollment_id: true,
+        attendance_date: true,
+        status: true,
+        recorded_by: true,
+        remarks: true,
+        created_at: true,
+        updated_at: true,
+        enrollment: {
+          select: {
+            classes: { select: { id: true, name: true } },
+            subjects: { select: { id: true, code: true, name: true } },
+            users_enrollment_student_idTousers: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+                studentDepartment: true,
+                studentYear: true,
+              },
+            },
+            users_enrollment_teacher_idTousers: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+                role: true,
+                teacherCourse: true,
+                teacherLevel: true,
+              },
+            },
+          },
+        },
+        users: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            role: true,
+          },
+        },
+      },
+    }),
+    prisma.attendance.findMany({
+      where: { attendance_date: { gte: from30Days } },
+      select: {
+        status: true,
+        enrollment: {
+          select: {
+            subjects: { select: { id: true, code: true, name: true } },
+          },
+        },
+      },
+    }),
   ]);
 
   const notificationRows = [];
 
-  const overview = { studentCount, teacherCount, classCount: classRows.length };
+  const overview = { studentCount, teacherCount, programHeadCount, classCount: classRows.length };
 
   const subjectStudentCounts = enrollmentRows.reduce((acc, row) => {
     const dept = row.users_enrollment_student_idTousers?.studentDepartment || 'Unassigned';
@@ -146,6 +219,54 @@ export async function getServerSideProps({ req }) {
     created_at: toIso(e.created_at),
   }));
 
+  const attendanceSummary = (attendanceGroups || []).reduce(
+    (acc, row) => {
+      acc[String(row.status)] = row._count?.id ?? 0;
+      return acc;
+    },
+    { present: 0, late: 0, absent: 0 }
+  );
+
+  const recentAttendance = (recentAttendanceRows || []).map(r => ({
+    id: r.id,
+    enrollment_id: r.enrollment_id,
+    attendance_date: toIso(r.attendance_date),
+    status: r.status,
+    remarks: r.remarks,
+    created_at: toIso(r.created_at),
+    updated_at: toIso(r.updated_at),
+    class: r.enrollment?.classes || null,
+    subject: r.enrollment?.subjects || null,
+    student: r.enrollment?.users_enrollment_student_idTousers || null,
+    teacher: r.enrollment?.users_enrollment_teacher_idTousers || null,
+    recordedBy: r.users || null,
+  }));
+
+  const subjectAttendanceReportMap = (last30DaysAttendanceRows || []).reduce((acc, row) => {
+    const subj = row.enrollment?.subjects;
+    if (!subj?.id) return acc;
+    if (!acc[subj.id]) {
+      acc[subj.id] = {
+        subjectId: subj.id,
+        code: subj.code,
+        name: subj.name,
+        presentCount: 0,
+        lateCount: 0,
+        absentCount: 0,
+      };
+    }
+    if (row.status === 'present') acc[subj.id].presentCount += 1;
+    if (row.status === 'late') acc[subj.id].lateCount += 1;
+    if (row.status === 'absent') acc[subj.id].absentCount += 1;
+    return acc;
+  }, {});
+
+  const subjectAttendanceReport = Object.values(subjectAttendanceReportMap).map(r => {
+    const total = r.presentCount + r.lateCount + r.absentCount;
+    const attendancePercentage = total > 0 ? Math.round((r.presentCount / total) * 100) : null;
+    return { ...r, total, attendancePercentage };
+  });
+
   return {
     props: {
       user,
@@ -156,6 +277,9 @@ export async function getServerSideProps({ req }) {
       subjectStudentCounts,
       subjectFilterTags,
       enrollments: safeEnrollments,
+      attendanceSummary,
+      recentAttendance,
+      subjectAttendanceReport,
       notifications: notificationRows,
     },
   };

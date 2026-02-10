@@ -14,17 +14,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    const notifications = await prisma.notification.findMany({
-      where: {
-        studentId: user.id,
-      },
-      orderBy: {
-        createdAt: 'desc',
-      },
-      take: 50,
-    });
-
-    return res.status(200).json({ notifications });
+    return res.status(200).json({ notifications: [] });
   } catch (err) {
     console.error('GET /api/student/notifications error', err);
     return res.status(500).json({ message: 'Internal server error' });

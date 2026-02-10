@@ -91,6 +91,7 @@ enum UserRole {
   admin
   student
   teacher
+  program_head
 }
 
 enum attendance_status {

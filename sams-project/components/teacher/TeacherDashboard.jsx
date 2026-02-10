@@ -2,12 +2,16 @@ import { useState, useEffect } from 'react';
 import TeacherSidebar from './TeacherSidebar';
 import DashboardHeader from '../layout/DashboardHeader';
 
-export default function TeacherDashboard({ user, classes = [], subjects = [], students = [] }) {
+export default function TeacherDashboard({ user, classes = [], subjects = [], students = [], teacherCount, programHeadCount }) {
   const [activeSection, setActiveSection] = useState('overview');
 
   const [notifications, setNotifications] = useState([]);
   const [notificationsLoading, setNotificationsLoading] = useState(false);
   const [notificationsError, setNotificationsError] = useState('');
+
+  const [logs, setLogs] = useState([]);
+  const [logsLoading, setLogsLoading] = useState(false);
+  const [logsError, setLogsError] = useState('');
 
   const [attendanceDate, setAttendanceDate] = useState(() => {
     const today = new Date();
@@ -73,6 +77,30 @@ export default function TeacherDashboard({ user, classes = [], subjects = [], st
     }
 
     loadNotifications();
+  }, []);
+
+  useEffect(() => {
+    async function loadLogs() {
+      setLogsLoading(true);
+      setLogsError('');
+
+      try {
+        const res = await fetch('/api/teacher/logs');
+        const data = await res.json().catch(() => ({}));
+
+        if (!res.ok) {
+          throw new Error(data.message || 'Failed to load logs');
+        }
+
+        setLogs(Array.isArray(data.logs) ? data.logs : []);
+      } catch (err) {
+        setLogsError(err.message || 'Failed to load logs');
+      } finally {
+        setLogsLoading(false);
+      }
+    }
+
+    loadLogs();
   }, []);
 
   async function handleLoadAttendanceStudents(e) {
@@ -355,38 +383,71 @@ export default function TeacherDashboard({ user, classes = [], subjects = [], st
         <TeacherSidebar activeSection={activeSection} onSelect={setActiveSection} />
 
         <section className="flex-1 p-6 md:p-8 bg-white rounded-xl border border-gray-200 shadow-md">
-          <DashboardHeader user={user} />
+          <DashboardHeader
+            user={user}
+            notificationCount={Array.isArray(notifications) ? notifications.length : 0}
+          />
 
           {activeSection === 'overview' && (
             <div className="space-y-6">
-              <section className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="p-4 rounded-xl border border-emerald-100 bg-emerald-50/80">
-                  <h2 className="text-xs font-semibold text-emerald-700 tracking-wide uppercase mb-1">Assigned classes</h2>
-                  <p className="text-sm text-gray-800">
-                    Quick view of classes where you manage attendance.
-                  </p>
+              <section className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div className="p-4 rounded-xl border border-emerald-100 bg-emerald-50">
+                  <h2 className="text-xs font-semibold text-emerald-700 tracking-wide uppercase mb-1">Teacher</h2>
+                  <p className="text-sm text-gray-800">Logs in to record attendance for assigned classes.</p>
                   <p className="mt-1 text-xs text-emerald-900/70">
-                    Use the Attendance section to load students and submit daily records.
+                    Updates attendance (Present, Late, Absent) and generates summaries per subject.
                   </p>
                 </div>
-                <div className="p-4 rounded-xl border border-blue-100 bg-blue-50/80">
-                  <h2 className="text-xs font-semibold text-blue-700 tracking-wide uppercase mb-1">Today&apos;s sessions</h2>
-                  <p className="text-sm text-gray-800">
-                    Placeholder for today&apos;s schedule and attendance tasks.
-                  </p>
-                  <p className="mt-1 text-xs text-blue-900/70">
-                    Future enhancement: show upcoming classes and attendance status per subject.
-                  </p>
+                <div className="rounded-xl border border-gray-200 bg-white p-4">
+                  <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Students</p>
+                  <p className="mt-2 text-sm text-gray-900">{(students || []).length}</p>
                 </div>
-                <div className="p-4 rounded-xl border border-amber-100 bg-amber-50/80">
-                  <h2 className="text-xs font-semibold text-amber-700 tracking-wide uppercase mb-1">Pending attendance</h2>
-                  <p className="text-sm text-gray-800">
-                    Placeholder for sections where attendance is not yet submitted.
-                  </p>
-                  <p className="mt-1 text-xs text-amber-900/70">
-                    Use this area to quickly jump into classes that still need attention.
-                  </p>
+                <div className="rounded-xl border border-gray-200 bg-white p-4">
+                  <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Teachers</p>
+                  <p className="mt-2 text-sm text-gray-900">{teacherCount ?? '—'}</p>
                 </div>
+              </section>
+
+              <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+                  <h2 className="text-sm font-semibold text-gray-900 mb-1">Total Students</h2>
+                  <p className="text-3xl font-semibold text-gray-900">{(students || []).length}</p>
+                  <p className="text-sm text-gray-500 mt-1">Number of students in the system</p>
+                </div>
+                <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+                  <h2 className="text-sm font-semibold text-gray-900 mb-1">Active Classes</h2>
+                  <p className="text-3xl font-semibold text-gray-900">{(classes || []).length}</p>
+                  <p className="text-sm text-gray-500 mt-1">Number of classes configured</p>
+                </div>
+                <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+                  <h2 className="text-sm font-semibold text-gray-900 mb-1">Total Subjects</h2>
+                  <p className="text-3xl font-semibold text-gray-900">{(subjects || []).length}</p>
+                  <p className="text-sm text-gray-500 mt-1">Subjects available in the system</p>
+                </div>
+              </section>
+
+              <section className="border border-gray-200 rounded-xl p-4 md:p-5 bg-gray-50">
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-3">
+                  <div>
+                    <h3 className="text-sm font-semibold text-gray-900">Quick snapshot of your community</h3>
+                    <p className="text-xs text-gray-600">Students, teachers, and classes overview in one place.</p>
+                  </div>
+                  <div className="flex flex-wrap gap-2 text-xs">
+                    <span className="inline-flex items-center px-2 py-1 rounded-full bg-blue-100 text-blue-800">
+                      Students: {(students || []).length}
+                    </span>
+                    <span className="inline-flex items-center px-2 py-1 rounded-full bg-emerald-100 text-emerald-800">
+                      Teachers: {teacherCount ?? '—'}
+                    </span>
+                    <span className="inline-flex items-center px-2 py-1 rounded-full bg-indigo-100 text-indigo-800">
+                      Classes: {(classes || []).length}
+                    </span>
+                  </div>
+                </div>
+                <p className="text-xs text-gray-500">
+                  Use the sections in the left sidebar to drill down into each area (Students, Teachers, Classes,
+                  Subjects) and perform add, edit, update, and delete operations.
+                </p>
               </section>
             </div>
           )}
@@ -476,35 +537,110 @@ export default function TeacherDashboard({ user, classes = [], subjects = [], st
                 </p>
               </div>
 
-              {notificationsLoading && (
-                <p className="text-xs text-gray-500">Loading notifications...</p>
-              )}
-
-              {notificationsError && (
-                <p className="text-xs text-red-600">{notificationsError}</p>
-              )}
-
-              {!notificationsLoading && !notificationsError && (
-                <div className="rounded-lg border border-gray-200 bg-white p-3 text-sm">
-                  {notifications && notifications.length > 0 ? (
-                    <ul className="space-y-2">
-                      {notifications.map(n => (
-                        <li
-                          key={n.id}
-                          className="border border-gray-100 rounded-md px-3 py-2 bg-gray-50"
-                        >
-                          <p className="text-gray-900 text-sm mb-1">{n.message}</p>
-                          <p className="text-[11px] text-gray-500">
-                            {n.createdAt ? new Date(n.createdAt).toLocaleString() : ''}
-                          </p>
-                        </li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <p className="text-xs text-gray-400">No notifications yet.</p>
-                  )}
+              <div className="space-y-3">
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-900">Attendance activity</h3>
+                  <p className="text-xs text-gray-600">Recent attendance records you submitted.</p>
                 </div>
-              )}
+
+                {logsLoading && (
+                  <p className="text-xs text-gray-500">Loading logs...</p>
+                )}
+
+                {logsError && (
+                  <p className="text-xs text-red-600">{logsError}</p>
+                )}
+
+                {!logsLoading && !logsError && (
+                  <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white">
+                    <table className="min-w-full divide-y divide-gray-200 text-sm">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-4 py-2 text-left text-xs font-semibold text-gray-600">ID</th>
+                          <th className="px-4 py-2 text-left text-xs font-semibold text-gray-600">Enrollment</th>
+                          <th className="px-4 py-2 text-left text-xs font-semibold text-gray-600">Date</th>
+                          <th className="px-4 py-2 text-left text-xs font-semibold text-gray-600">Student</th>
+                          <th className="px-4 py-2 text-left text-xs font-semibold text-gray-600">Subject</th>
+                          <th className="px-4 py-2 text-left text-xs font-semibold text-gray-600">Class</th>
+                          <th className="px-4 py-2 text-left text-xs font-semibold text-gray-600">Status</th>
+                          <th className="px-4 py-2 text-left text-xs font-semibold text-gray-600">Remarks</th>
+                          <th className="px-4 py-2 text-left text-xs font-semibold text-gray-600">Created</th>
+                          <th className="px-4 py-2 text-left text-xs font-semibold text-gray-600">Updated</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100">
+                        {(logs || []).map(row => (
+                          <tr key={row.id} className="hover:bg-gray-50">
+                            <td className="px-4 py-2 text-xs text-gray-500">{row.id}</td>
+                            <td className="px-4 py-2 text-xs text-gray-500">{row.enrollment_id}</td>
+                            <td className="px-4 py-2 text-xs text-gray-700">
+                              {row.attendance_date ? new Date(row.attendance_date).toLocaleDateString() : '—'}
+                            </td>
+                            <td className="px-4 py-2 text-gray-900">
+                              <div className="text-xs text-gray-900">{row.student?.name || '—'}</div>
+                              <div className="text-[11px] text-gray-500">{row.student?.email || ''}</div>
+                            </td>
+                            <td className="px-4 py-2 text-gray-700">
+                              {row.subject ? `${row.subject.code} - ${row.subject.name}` : '—'}
+                            </td>
+                            <td className="px-4 py-2 text-gray-700">{row.class?.name || '—'}</td>
+                            <td className="px-4 py-2 text-gray-700">{row.status}</td>
+                            <td className="px-4 py-2 text-gray-700">{row.remarks || ''}</td>
+                            <td className="px-4 py-2 text-xs text-gray-500">
+                              {row.created_at ? new Date(row.created_at).toLocaleString() : '—'}
+                            </td>
+                            <td className="px-4 py-2 text-xs text-gray-500">
+                              {row.updated_at ? new Date(row.updated_at).toLocaleString() : '—'}
+                            </td>
+                          </tr>
+                        ))}
+                        {(!logs || logs.length === 0) && (
+                          <tr>
+                            <td colSpan={10} className="px-4 py-4 text-xs text-center text-gray-400">
+                              No attendance logs found yet.
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-900">Notifications</h3>
+                  <p className="text-xs text-gray-600">Messages related to your classes and students.</p>
+                </div>
+
+                {notificationsLoading && (
+                  <p className="text-xs text-gray-500">Loading notifications...</p>
+                )}
+
+                {notificationsError && (
+                  <p className="text-xs text-red-600">{notificationsError}</p>
+                )}
+
+                {!notificationsLoading && !notificationsError && (
+                  <div className="rounded-lg border border-gray-200 bg-white p-3 text-sm">
+                    {notifications && notifications.length > 0 ? (
+                      <ul className="space-y-2">
+                        {notifications.map(n => (
+                          <li
+                            key={n.id}
+                            className="border border-gray-100 rounded-md px-3 py-2 bg-gray-50"
+                          >
+                            <p className="text-gray-900 text-sm mb-1">{n.message}</p>
+                            <p className="text-[11px] text-gray-500">
+                              {n.createdAt ? new Date(n.createdAt).toLocaleString() : ''}
+                            </p>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="text-xs text-gray-400">No notifications yet.</p>
+                    )}
+                  </div>
+                )}
+              </div>
             </section>
           )}
 

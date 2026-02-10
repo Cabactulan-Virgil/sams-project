@@ -6,11 +6,7 @@ export default function Sidebar({ activeSection, onSelect }) {
     },
     {
       title: 'People',
-      items: ['students', 'teachers'],
-    },
-    {
-      title: 'Academic structure',
-      items: ['classes', 'subjects', 'enrollments'],
+      items: ['users', 'students', 'teachers', 'program_heads'],
     },
     {
       title: 'Attendance & reports',
@@ -18,7 +14,7 @@ export default function Sidebar({ activeSection, onSelect }) {
     },
     {
       title: 'Notifications',
-      items: ['notifications'],
+      items: ['logs', 'notifications'],
     },
   ];
 
@@ -41,7 +37,10 @@ export default function Sidebar({ activeSection, onSelect }) {
                       : 'hover:bg-gray-300 text-gray-800'
                   }`}
                 >
-                  {sec.charAt(0).toUpperCase() + sec.slice(1)}
+                  {sec
+                    .split('_')
+                    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+                    .join(' ')}
                 </li>
               ))}
             </ul>

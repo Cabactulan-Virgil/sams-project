@@ -31,6 +31,14 @@ export default function StudentDashboardShell({ user, summary, subjects = [] }) 
   const attendancePercentage =
     summary?.attendancePercentage != null ? summary.attendancePercentage : null;
 
+  const enrolledClassCount = Array.from(
+    new Set(
+      (subjects || [])
+        .map(s => (s.classId != null ? String(s.classId) : ''))
+        .filter(Boolean)
+    )
+  ).length;
+
   useEffect(() => {
     async function loadNotifications() {
       setNotificationsLoading(true);
@@ -110,20 +118,28 @@ export default function StudentDashboardShell({ user, summary, subjects = [] }) 
           </header>
 
           {activeSection === 'overview' && (
-            <section className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
-                <h2 className="text-sm font-semibold text-gray-900 mb-1">Overall attendance</h2>
-                <p className="text-xs text-gray-600 mb-1">
-                  Total sessions recorded: {totalSessions}
+            <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="p-4 rounded-xl border border-indigo-100 bg-indigo-50">
+                <h2 className="text-xs font-semibold text-indigo-700 tracking-wide uppercase mb-1">Student</h2>
+                <p className="text-sm text-gray-800">Logs in to view their personal attendance record and percentage.</p>
+                <p className="mt-1 text-xs text-indigo-900/70">
+                  Monitors absences and present rates across enrolled subjects.
                 </p>
-                <p className="text-xs text-gray-600">
-                  Attendance rate:{' '}
+              </div>
+
+              <div className="p-4 rounded-xl border border-blue-100 bg-blue-50/80">
+                <h2 className="text-xs font-semibold text-blue-700 tracking-wide uppercase mb-1">Overall attendance</h2>
+                <p className="text-sm text-gray-800">Your attendance rate so far.</p>
+                <p className="mt-1 text-xs text-blue-900/70">Total sessions: {totalSessions}</p>
+                <p className="mt-1 text-sm font-semibold text-blue-900">
                   {attendancePercentage != null ? `${attendancePercentage}%` : '—'}
                 </p>
               </div>
-              <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
-                <h2 className="text-sm font-semibold text-gray-900 mb-2">By status</h2>
-                <dl className="grid grid-cols-3 gap-2 text-xs text-gray-700">
+
+              <div className="p-4 rounded-xl border border-emerald-100 bg-emerald-50/80">
+                <h2 className="text-xs font-semibold text-emerald-700 tracking-wide uppercase mb-1">Status breakdown</h2>
+                <p className="text-sm text-gray-800">Present, late, and absent totals.</p>
+                <dl className="mt-2 grid grid-cols-3 gap-2 text-xs text-gray-700">
                   <div>
                     <dt className="text-gray-500">Present</dt>
                     <dd className="font-semibold text-emerald-700">{presentCount}</dd>
@@ -137,6 +153,13 @@ export default function StudentDashboardShell({ user, summary, subjects = [] }) 
                     <dd className="font-semibold text-red-700">{absentCount}</dd>
                   </div>
                 </dl>
+              </div>
+
+              <div className="p-4 rounded-xl border border-amber-100 bg-amber-50/80">
+                <h2 className="text-xs font-semibold text-amber-700 tracking-wide uppercase mb-1">Academic structure</h2>
+                <p className="text-sm text-gray-800">Your current enrollments.</p>
+                <p className="mt-1 text-xs text-amber-900/70">Classes: {enrolledClassCount}</p>
+                <p className="mt-1 text-xs text-amber-900/70">Subjects: {(subjects || []).length}</p>
               </div>
             </section>
           )}

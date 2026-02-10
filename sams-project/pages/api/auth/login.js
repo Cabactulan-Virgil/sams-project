@@ -61,6 +61,7 @@ export default async function handler(req, res) {
     const redirectTo = {
       admin: '/admin',
       teacher: '/teacher',
+      program_head: '/program-head',
       student: '/student',
     }[user.role] || '/';
 

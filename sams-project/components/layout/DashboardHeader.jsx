@@ -24,7 +24,7 @@ export default function DashboardHeader({ user, notificationCount }) {
         )}
       </div>
       <div className="flex items-center gap-3 self-start sm:self-auto">
-        {user?.role === 'admin' && (
+        {(user?.role === 'admin' || user?.role === 'teacher' || user?.role === 'program_head') && (
           <div className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full border border-gray-300 bg-white text-xs text-gray-700">
             <span className="mr-1">🔔</span>
             <span className="font-medium">Notifications</span>

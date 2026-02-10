@@ -3,7 +3,7 @@ import prisma from '../../../../lib/prisma';
 import { getUserFromRequest } from '../../../../lib/auth';
 import { sendAdminNewUserEmail } from '../../../../lib/email';
 
-const ALLOWED_ROLES = ['student', 'teacher'];
+const ALLOWED_ROLES = ['student', 'teacher', 'program_head'];
 
 export default async function handler(req, res) {
   const authUser = getUserFromRequest(req);
@@ -15,15 +15,38 @@ export default async function handler(req, res) {
     });
   }
 
-  if (req.method !== 'POST') {
-    res.setHeader('Allow', ['POST']);
-    return res.status(405).json({
-      success: false,
-      message: 'Method not allowed',
-    });
-  }
-
   try {
+    if (req.method === 'GET') {
+      const users = await prisma.user.findMany({
+        orderBy: { id: 'desc' },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          role: true,
+          teacherProgram: true,
+          teacherCourse: true,
+          teacherLevel: true,
+          studentDepartment: true,
+          studentYear: true,
+          createdAt: true,
+        },
+      });
+
+      return res.status(200).json({
+        success: true,
+        users,
+      });
+    }
+
+    if (req.method !== 'POST') {
+      res.setHeader('Allow', ['GET', 'POST']);
+      return res.status(405).json({
+        success: false,
+        message: 'Method not allowed',
+      });
+    }
+
     const {
       name,
       email,
@@ -59,7 +82,7 @@ export default async function handler(req, res) {
       }
     }
 
-    if (role === 'teacher') {
+    if (role === 'teacher' || role === 'program_head') {
       if (!teacherCourse || !teacherLevel) {
         return res.status(400).json({
           success: false,
@@ -89,9 +112,9 @@ export default async function handler(req, res) {
         email,
         passwordHash,
         role,
-        teacherProgram: role === 'teacher' ? teacherProgram || null : null,
-        teacherCourse: role === 'teacher' ? teacherCourse || null : null,
-        teacherLevel: role === 'teacher' ? teacherLevel || null : null,
+        teacherProgram: role === 'teacher' || role === 'program_head' ? teacherProgram || null : null,
+        teacherCourse: role === 'teacher' || role === 'program_head' ? teacherCourse || null : null,
+        teacherLevel: role === 'teacher' || role === 'program_head' ? teacherLevel || null : null,
         studentDepartment: role === 'student' ? studentDepartment || null : null,
         studentYear: role === 'student' ? studentYear || null : null,
       },
@@ -100,16 +123,21 @@ export default async function handler(req, res) {
     const notificationMessage =
       role === 'student'
         ? `New Student registered — ${user.name}`
-        : `New Teacher registered — ${user.name}`;
+        : role === 'program_head'
+          ? `New Program Head registered — ${user.name}`
+          : `New Teacher registered — ${user.name}`;
 
-    const notification = await prisma.notification.create({
-      data: {
-        message: notificationMessage,
-        studentId: role === 'student' ? user.id : null,
-        teacherId: role === 'teacher' ? user.id : null,
-        type: 'registration',
-      },
-    });
+    let notification = null;
+    if (prisma.notification?.create) {
+      notification = await prisma.notification.create({
+        data: {
+          message: notificationMessage,
+          studentId: role === 'student' ? user.id : null,
+          teacherId: role === 'teacher' || role === 'program_head' ? user.id : null,
+          type: 'registration',
+        },
+      });
+    }
 
     await sendAdminNewUserEmail({
       name: user.name,
@@ -133,10 +161,18 @@ export default async function handler(req, res) {
       message: 'User created successfully',
     });
   } catch (error) {
-    console.error('Admin create user error', error);
+    console.error('Admin create user error', {
+      name: error?.name,
+      code: error?.code,
+      message: error?.message,
+      meta: error?.meta,
+    });
+
+    const isProd = process.env.NODE_ENV === 'production';
     return res.status(500).json({
       success: false,
-      message: 'Internal server error',
+      message: isProd ? 'Internal server error' : error?.message || 'Internal server error',
+      code: isProd ? undefined : error?.code,
     });
   }
 }

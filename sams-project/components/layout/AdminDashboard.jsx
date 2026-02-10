@@ -12,11 +12,16 @@ export default function AdminDashboard({
   subjectStudentCounts = {},
   subjectFilterTags = {},
   enrollments = [],
+  attendanceSummary,
+  recentAttendance,
+  subjectAttendanceReport,
   notifications = [],
 }) {
   const [activeSection, setActiveSection] = useState('overview');
   const [studentSearch, setStudentSearch] = useState('');
   const [studentSearchDraft, setStudentSearchDraft] = useState('');
+  const [userRoleFilter, setUserRoleFilter] = useState('all');
+  const [showAddUserChooser, setShowAddUserChooser] = useState(false);
   const [studentDepartmentFilter, setStudentDepartmentFilter] = useState('');
   const [studentYearFilter, setStudentYearFilter] = useState('');
   const [teacherYearFilter, setTeacherYearFilter] = useState('');
@@ -55,6 +60,11 @@ export default function AdminDashboard({
 
   const studentUsers = userList.filter(u => u.role === 'student');
   const teacherUsers = userList.filter(u => u.role === 'teacher');
+  const programHeadUsers = userList.filter(u => u.role === 'program_head');
+  const teacherLikeUsers = userList.filter(u => u.role === 'teacher' || u.role === 'program_head');
+
+  const UNASSIGNED_LABEL = 'Unassigned';
+  const NA_LABEL = 'N/A';
 
   const filteredStudentUsers = studentUsers.filter(s => {
     if (studentSearch) {
@@ -64,13 +74,45 @@ export default function AdminDashboard({
     }
 
     if (studentDepartmentFilter) {
-      const dept = (s.studentDepartment || '').toLowerCase().trim();
-      if (dept !== studentDepartmentFilter.toLowerCase().trim()) return false;
+      const selected = studentDepartmentFilter.toLowerCase().trim();
+      const deptRaw = (s.studentDepartment || '').trim();
+      const deptNormalized = deptRaw ? deptRaw.toLowerCase() : UNASSIGNED_LABEL.toLowerCase();
+      if (deptNormalized !== selected) return false;
     }
 
     if (studentYearFilter) {
-      const yearStr = s.studentYear != null ? String(s.studentYear).toLowerCase().trim() : '';
-      if (yearStr !== studentYearFilter.toLowerCase().trim()) return false;
+      const selected = studentYearFilter.toLowerCase().trim();
+      const yearRaw = s.studentYear != null ? String(s.studentYear).trim() : '';
+      const yearNormalized = yearRaw ? yearRaw.toLowerCase() : NA_LABEL.toLowerCase();
+      if (yearNormalized !== selected) return false;
+    }
+
+    return true;
+  });
+
+  const filteredProgramHeadUsers = programHeadUsers.filter(t => {
+    if (teacherDepartmentFilter) {
+      const selected = teacherDepartmentFilter.toLowerCase().trim();
+      const courseRaw = (t.teacherCourse || '').trim();
+      const courseNormalized = courseRaw ? courseRaw.toLowerCase() : UNASSIGNED_LABEL.toLowerCase();
+
+      if (selected === UNASSIGNED_LABEL.toLowerCase()) {
+        if (courseRaw) return false;
+      } else if (!courseNormalized.includes(selected)) {
+        return false;
+      }
+    }
+
+    if (teacherYearFilter) {
+      const selected = teacherYearFilter.toLowerCase().trim();
+      const levelRaw = (t.teacherLevel || '').trim();
+      const levelNormalized = levelRaw ? levelRaw.toLowerCase() : NA_LABEL.toLowerCase();
+
+      if (selected === NA_LABEL.toLowerCase()) {
+        if (levelRaw) return false;
+      } else if (!levelNormalized.includes(selected)) {
+        return false;
+      }
     }
 
     return true;
@@ -79,16 +121,26 @@ export default function AdminDashboard({
   const filteredTeacherUsers = teacherUsers.filter(t => {
     // filter by selected department (course)
     if (teacherDepartmentFilter) {
-      const course = (t.teacherCourse || '').toLowerCase();
-      if (!course.includes(teacherDepartmentFilter.toLowerCase())) {
+      const selected = teacherDepartmentFilter.toLowerCase().trim();
+      const courseRaw = (t.teacherCourse || '').trim();
+      const courseNormalized = courseRaw ? courseRaw.toLowerCase() : UNASSIGNED_LABEL.toLowerCase();
+
+      if (selected === UNASSIGNED_LABEL.toLowerCase()) {
+        if (courseRaw) return false;
+      } else if (!courseNormalized.includes(selected)) {
         return false;
       }
     }
 
     // filter by selected year level
     if (teacherYearFilter) {
-      const level = (t.teacherLevel || '').toLowerCase();
-      if (!level.includes(teacherYearFilter.toLowerCase())) {
+      const selected = teacherYearFilter.toLowerCase().trim();
+      const levelRaw = (t.teacherLevel || '').trim();
+      const levelNormalized = levelRaw ? levelRaw.toLowerCase() : NA_LABEL.toLowerCase();
+
+      if (selected === NA_LABEL.toLowerCase()) {
+        if (levelRaw) return false;
+      } else if (!levelNormalized.includes(selected)) {
         return false;
       }
     }
@@ -143,7 +195,7 @@ export default function AdminDashboard({
     );
   });
 
-  const filteredEnrollmentTeachers = teacherUsers.filter(t => {
+  const filteredEnrollmentTeachers = teacherLikeUsers.filter(t => {
     if (!enrollmentStudentFilter) return true;
     const term = enrollmentStudentFilter.toLowerCase();
     const course = (t.teacherCourse || '').toLowerCase();
@@ -239,8 +291,27 @@ export default function AdminDashboard({
     return acc;
   }, {});
 
-  const teacherCoursesForSelect = Array.from(new Set(teacherUsers.map(t => t.teacherCourse).filter(Boolean)));
-  const teacherLevelsForSelect = Array.from(new Set(teacherUsers.map(t => t.teacherLevel).filter(Boolean)));
+  const programHeadCourseLevelMap = filteredProgramHeadUsers.reduce((acc, t) => {
+    const course = t.teacherCourse || 'Unassigned';
+    const level = t.teacherLevel || 'N/A';
+    if (!acc[course]) {
+      acc[course] = { total: 0, levels: {} };
+    }
+    acc[course].total += 1;
+    acc[course].levels[level] = (acc[course].levels[level] || 0) + 1;
+    return acc;
+  }, {});
+
+  const teacherCoursesForSelect = Array.from(
+    new Set(
+      teacherLikeUsers.map(t => (t.teacherCourse && String(t.teacherCourse).trim() ? String(t.teacherCourse).trim() : UNASSIGNED_LABEL))
+    )
+  );
+  const teacherLevelsForSelect = Array.from(
+    new Set(
+      teacherLikeUsers.map(t => (t.teacherLevel && String(t.teacherLevel).trim() ? String(t.teacherLevel).trim() : NA_LABEL))
+    )
+  );
 
   const subjectDepartmentYearMap =
     subjectStudentCounts && Object.keys(subjectStudentCounts).length > 0
@@ -269,6 +340,7 @@ export default function AdminDashboard({
   const [studentForm, setStudentForm] = useState({
     name: '',
     email: '',
+    password: '',
     studentDepartment: '',
     studentYear: '',
   });
@@ -276,15 +348,20 @@ export default function AdminDashboard({
   const [newStudentForm, setNewStudentForm] = useState({
     name: '',
     email: '',
+    password: '',
     studentDepartment: '',
     studentYear: '',
   });
 
   const [editingTeacher, setEditingTeacher] = useState(null);
   const [addingTeacher, setAddingTeacher] = useState(false);
+  const [teacherRoleDraft, setTeacherRoleDraft] = useState('teacher');
+  const [showNewStudentPassword, setShowNewStudentPassword] = useState(false);
+  const [showNewTeacherPassword, setShowNewTeacherPassword] = useState(false);
   const [teacherForm, setTeacherForm] = useState({
     name: '',
     email: '',
+    password: '',
     teacherCourse: '',
     teacherLevel: '',
   });
@@ -292,6 +369,7 @@ export default function AdminDashboard({
   const [newTeacherForm, setNewTeacherForm] = useState({
     name: '',
     email: '',
+    password: '',
     teacherCourse: '',
     teacherLevel: '',
   });
@@ -350,6 +428,7 @@ export default function AdminDashboard({
     setStudentForm({
       name: student.name || '',
       email: student.email || '',
+      password: '',
       studentDepartment: student.studentDepartment || '',
       studentYear: student.studentYear || '',
     });
@@ -410,18 +489,19 @@ export default function AdminDashboard({
 
   const closeEditStudent = () => {
     setEditingStudent(null);
-    setStudentForm({ name: '', email: '', studentDepartment: '', studentYear: '' });
+    setStudentForm({ name: '', email: '', password: '', studentDepartment: '', studentYear: '' });
     setStudentSaving(false);
   };
 
   const openAddStudent = () => {
-    setNewStudentForm({ name: '', email: '', studentDepartment: '', studentYear: '' });
+    setNewStudentForm({ name: '', email: '', password: '', studentDepartment: '', studentYear: '' });
     setAddingStudent(true);
   };
 
   const closeAddStudent = () => {
     setAddingStudent(false);
-    setNewStudentForm({ name: '', email: '', studentDepartment: '', studentYear: '' });
+    setNewStudentForm({ name: '', email: '', password: '', studentDepartment: '', studentYear: '' });
+    setShowNewStudentPassword(false);
     setStudentSaving(false);
   };
 
@@ -445,6 +525,7 @@ export default function AdminDashboard({
         body: JSON.stringify({
           name: studentForm.name,
           email: studentForm.email,
+          password: studentForm.password,
           role: 'student',
           studentDepartment: studentForm.studentDepartment,
           studentYear: studentForm.studentYear,
@@ -479,6 +560,7 @@ export default function AdminDashboard({
         body: JSON.stringify({
           name: newStudentForm.name,
           email: newStudentForm.email,
+          password: newStudentForm.password,
           role: 'student',
           studentDepartment: newStudentForm.studentDepartment,
           studentYear: newStudentForm.studentYear,
@@ -530,9 +612,11 @@ export default function AdminDashboard({
 
   const openEditTeacher = (teacher) => {
     setEditingTeacher(teacher);
+    setTeacherRoleDraft(teacher.role === 'program_head' ? 'program_head' : 'teacher');
     setTeacherForm({
       name: teacher.name || '',
       email: teacher.email || '',
+      password: '',
       teacherCourse: teacher.teacherCourse || '',
       teacherLevel: teacher.teacherLevel || '',
     });
@@ -540,18 +624,26 @@ export default function AdminDashboard({
 
   const closeEditTeacher = () => {
     setEditingTeacher(null);
-    setTeacherForm({ name: '', email: '', teacherCourse: '', teacherLevel: '' });
+    setTeacherForm({ name: '', email: '', password: '', teacherCourse: '', teacherLevel: '' });
     setTeacherSaving(false);
   };
 
   const openAddTeacher = () => {
-    setNewTeacherForm({ name: '', email: '', teacherCourse: '', teacherLevel: '' });
+    setNewTeacherForm({ name: '', email: '', password: '', teacherCourse: '', teacherLevel: '' });
+    setTeacherRoleDraft('teacher');
+    setAddingTeacher(true);
+  };
+
+  const openAddProgramHead = () => {
+    setNewTeacherForm({ name: '', email: '', password: '', teacherCourse: '', teacherLevel: '' });
+    setTeacherRoleDraft('program_head');
     setAddingTeacher(true);
   };
 
   const closeAddTeacher = () => {
     setAddingTeacher(false);
-    setNewTeacherForm({ name: '', email: '', teacherCourse: '', teacherLevel: '' });
+    setNewTeacherForm({ name: '', email: '', password: '', teacherCourse: '', teacherLevel: '' });
+    setShowNewTeacherPassword(false);
     setTeacherSaving(false);
   };
 
@@ -575,7 +667,8 @@ export default function AdminDashboard({
         body: JSON.stringify({
           name: teacherForm.name,
           email: teacherForm.email,
-          role: 'teacher',
+          password: teacherForm.password,
+          role: teacherRoleDraft,
           teacherCourse: teacherForm.teacherCourse,
           teacherLevel: teacherForm.teacherLevel,
         }),
@@ -608,7 +701,8 @@ export default function AdminDashboard({
         body: JSON.stringify({
           name: newTeacherForm.name,
           email: newTeacherForm.email,
-          role: 'teacher',
+          password: newTeacherForm.password,
+          role: teacherRoleDraft,
           teacherCourse: newTeacherForm.teacherCourse,
           teacherLevel: newTeacherForm.teacherLevel,
         }),
@@ -901,34 +995,12 @@ export default function AdminDashboard({
           <DashboardHeader user={user} notificationCount={unreadNotificationCount} />
 
           {activeSection === 'overview' && (
-            <div className="space-y-8">
+            <div className="space-y-6">
               <section className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="p-4 rounded-xl border border-blue-100 bg-blue-50/80">
                   <h2 className="text-xs font-semibold text-blue-700 tracking-wide uppercase mb-1">Administrator</h2>
-                  <p className="text-sm text-gray-800">
-                    Manages subjects, students, teachers, and class assignments.
-                  </p>
-                  <p className="mt-1 text-xs text-blue-900/70">
-                    Generates overall attendance reports and system-wide analytics.
-                  </p>
-                </div>
-                <div className="p-4 rounded-xl border border-emerald-100 bg-emerald-50">
-                  <h2 className="text-xs font-semibold text-emerald-700 tracking-wide uppercase mb-1">Teacher</h2>
-                  <p className="text-sm text-gray-800">
-                    Logs in to record attendance for assigned classes.
-                  </p>
-                  <p className="mt-1 text-xs text-emerald-900/70">
-                    Updates attendance (Present, Late, Absent) and generates summaries per subject.
-                  </p>
-                </div>
-                <div className="p-4 rounded-xl border border-indigo-100 bg-indigo-50">
-                  <h2 className="text-xs font-semibold text-indigo-700 tracking-wide uppercase mb-1">Student</h2>
-                  <p className="text-sm text-gray-800">
-                    Logs in to view their personal attendance record and percentage.
-                  </p>
-                  <p className="mt-1 text-xs text-indigo-900/70">
-                    Monitors absences and present rates across enrolled subjects.
-                  </p>
+                  <p className="text-sm text-gray-800">Manages subjects, students, teachers, and class assignments.</p>
+                  <p className="mt-1 text-xs text-blue-900/70">Generates overall attendance reports and system-wide analytics.</p>
                 </div>
               </section>
 
@@ -947,6 +1019,9 @@ export default function AdminDashboard({
                     <span className="inline-flex items-center px-2 py-1 rounded-full bg-emerald-100 text-emerald-800">
                       Teachers: {overview?.teacherCount ?? '—'}
                     </span>
+                    <span className="inline-flex items-center px-2 py-1 rounded-full bg-purple-100 text-purple-800">
+                      Program Heads: {overview?.programHeadCount ?? '—'}
+                    </span>
                     <span className="inline-flex items-center px-2 py-1 rounded-full bg-indigo-100 text-indigo-800">
                       Classes: {overview?.classCount ?? '—'}
                     </span>
@@ -957,6 +1032,432 @@ export default function AdminDashboard({
                   Subjects) and perform add, edit, update, and delete operations.
                 </p>
               </section>
+            </div>
+          )}
+
+          {activeSection === 'logs' && (
+            <div className="space-y-6">
+              <div>
+                <h2 className="text-lg font-semibold">Logs</h2>
+                <p className="text-sm text-gray-600">System-wide activity based on attendance records.</p>
+              </div>
+
+              <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white">
+                <table className="min-w-full divide-y divide-gray-200 text-sm">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-4 py-2 text-left text-xs font-semibold text-gray-600">ID</th>
+                      <th className="px-4 py-2 text-left text-xs font-semibold text-gray-600">Enrollment</th>
+                      <th className="px-4 py-2 text-left text-xs font-semibold text-gray-600">Date</th>
+                      <th className="px-4 py-2 text-left text-xs font-semibold text-gray-600">Student</th>
+                      <th className="px-4 py-2 text-left text-xs font-semibold text-gray-600">Subject</th>
+                      <th className="px-4 py-2 text-left text-xs font-semibold text-gray-600">Class</th>
+                      <th className="px-4 py-2 text-left text-xs font-semibold text-gray-600">Teacher</th>
+                      <th className="px-4 py-2 text-left text-xs font-semibold text-gray-600">Status</th>
+                      <th className="px-4 py-2 text-left text-xs font-semibold text-gray-600">Remarks</th>
+                      <th className="px-4 py-2 text-left text-xs font-semibold text-gray-600">Recorded by</th>
+                      <th className="px-4 py-2 text-left text-xs font-semibold text-gray-600">Created</th>
+                      <th className="px-4 py-2 text-left text-xs font-semibold text-gray-600">Updated</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {(recentAttendance || []).map(row => (
+                      <tr key={row.id} className="hover:bg-gray-50">
+                        <td className="px-4 py-2 text-xs text-gray-500">{row.id}</td>
+                        <td className="px-4 py-2 text-xs text-gray-500">{row.enrollment_id ?? '—'}</td>
+                        <td className="px-4 py-2 text-xs text-gray-500">
+                          {row.attendance_date ? new Date(row.attendance_date).toLocaleDateString() : '—'}
+                        </td>
+                        <td className="px-4 py-2 text-gray-900">
+                          <div className="text-xs text-gray-900">{row.student?.name || '—'}</div>
+                          <div className="text-[11px] text-gray-500">{row.student?.email || ''}</div>
+                        </td>
+                        <td className="px-4 py-2 text-gray-700">
+                          {row.subject ? `${row.subject.code} - ${row.subject.name}` : '—'}
+                        </td>
+                        <td className="px-4 py-2 text-gray-700">{row.class?.name || '—'}</td>
+                        <td className="px-4 py-2 text-gray-700">{row.teacher?.name || '—'}</td>
+                        <td className="px-4 py-2 text-gray-700">{row.status}</td>
+                        <td className="px-4 py-2 text-gray-700">{row.remarks || ''}</td>
+                        <td className="px-4 py-2 text-gray-700">{row.recordedBy?.name || '—'}</td>
+                        <td className="px-4 py-2 text-xs text-gray-500">
+                          {row.created_at ? new Date(row.created_at).toLocaleString() : '—'}
+                        </td>
+                        <td className="px-4 py-2 text-xs text-gray-500">
+                          {row.updated_at ? new Date(row.updated_at).toLocaleString() : '—'}
+                        </td>
+                      </tr>
+                    ))}
+                    {(!recentAttendance || recentAttendance.length === 0) && (
+                      <tr>
+                        <td colSpan={12} className="px-4 py-4 text-xs text-center text-gray-400">
+                          No logs found.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {activeSection === 'program_heads' && (
+            <div className="space-y-4">
+              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                <div>
+                  <h2 className="text-lg font-semibold">Program Heads</h2>
+                  <p className="text-sm text-gray-600">Manage program head accounts.</p>
+                </div>
+                <div className="flex flex-col md:flex-row md:items-center md:justify-end gap-2 w-full md:w-auto">
+                  <div className="flex flex-row flex-wrap items-center gap-2 w-full md:w-auto">
+                    <select
+                      value={teacherDepartmentFilter}
+                      onChange={(e) => setTeacherDepartmentFilter(e.target.value)}
+                      className="w-full md:w-40 px-3 py-1.5 border border-gray-300 rounded-md text-xs shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    >
+                      <option value="">All departments</option>
+                      {Array.from(new Set(programHeadUsers.map(t => t.teacherCourse).filter(Boolean))).map(course => (
+                        <option key={course} value={course}>
+                          {course}
+                        </option>
+                      ))}
+                    </select>
+                    <select
+                      value={teacherYearFilter}
+                      onChange={(e) => setTeacherYearFilter(e.target.value)}
+                      className="w-full md:w-32 px-3 py-1.5 border border-gray-300 rounded-md text-xs shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    >
+                      <option value="">All levels</option>
+                      {Array.from(new Set(programHeadUsers.map(t => t.teacherLevel).filter(Boolean))).map(level => (
+                        <option key={level} value={level}>
+                          {`Level ${level}`}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={openAddProgramHead}
+                    className="inline-flex items-center px-3 py-1.5 rounded-md bg-purple-600 text-white text-xs font-medium shadow-sm hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500"
+                  >
+                    Add program head
+                  </button>
+                </div>
+              </div>
+
+              <div className="rounded-xl border border-gray-200 bg-white p-4">
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                  <div>
+                    <h3 className="text-sm font-semibold text-gray-900">Analytics</h3>
+                    <p className="text-xs text-gray-600">Based on current filters.</p>
+                  </div>
+                  <div className="text-sm text-gray-900">Total: {filteredProgramHeadUsers.length}</div>
+                </div>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {Object.keys(programHeadCourseLevelMap).length > 0 ? (
+                    Object.entries(programHeadCourseLevelMap).map(([course, info]) => (
+                      <span
+                        key={course}
+                        className="inline-flex items-center px-2 py-0.5 rounded-full bg-purple-50 text-purple-700 border border-purple-200 text-[11px]"
+                      >
+                        {course}: {info.total}
+                      </span>
+                    ))
+                  ) : (
+                    <span className="text-xs text-gray-400">No data.</span>
+                  )}
+                </div>
+              </div>
+
+              {Object.keys(programHeadCourseLevelMap).length > 0 && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {Object.entries(programHeadCourseLevelMap).map(([course, info]) => (
+                    <div
+                      key={course}
+                      className="rounded-lg border border-purple-100 bg-purple-50 px-3 py-2 text-xs flex flex-col gap-1"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <div>
+                          <p className="text-[11px] font-semibold text-purple-800 uppercase tracking-wide">
+                            {course}
+                          </p>
+                          <p className="text-[11px] text-purple-900/80">
+                            {info.total} program head{info.total === 1 ? '' : 's'}
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setTeacherDepartmentFilter(course);
+                            setTeacherYearFilter('');
+                          }}
+                          className="inline-flex items-center px-2 py-1 rounded-md bg-white text-[11px] font-medium text-purple-700 border border-purple-200 hover:bg-purple-50"
+                        >
+                          Filter
+                        </button>
+                      </div>
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {Object.entries(info.levels).map(([level, count]) => {
+                          const label = level === 'N/A' ? 'Level N/A' : `Level ${level}`;
+                          return (
+                            <button
+                              key={level}
+                              type="button"
+                              onClick={() => {
+                                setTeacherDepartmentFilter(course);
+                                setTeacherYearFilter(level);
+                              }}
+                              className="inline-flex items-center px-2 py-0.5 rounded-full bg-white text-[11px] text-purple-800 border border-purple-200 hover:bg-purple-50"
+                            >
+                              {label}
+                              <span className="ml-1 text-[10px] text-purple-700">({count})</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white">
+                <table className="min-w-full divide-y divide-gray-200 text-sm">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-4 py-2 text-left text-xs font-semibold text-gray-600">ID</th>
+                      <th className="px-4 py-2 text-left text-xs font-semibold text-gray-600">Program Head</th>
+                      <th className="px-4 py-2 text-left text-xs font-semibold text-gray-600">Course</th>
+                      <th className="px-4 py-2 text-left text-xs font-semibold text-gray-600">Level</th>
+                      <th className="px-4 py-2 text-center text-xs font-semibold text-gray-600">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {filteredProgramHeadUsers.map(t => (
+                      <tr key={t.id} className="hover:bg-gray-50">
+                        <td className="px-4 py-2 text-xs text-gray-500">{t.id}</td>
+                        <td className="px-4 py-2 text-gray-900">
+                          <div className="text-xs text-gray-900">{t.name}</div>
+                          <div className="text-[11px] text-gray-500">{t.email}</div>
+                        </td>
+                        <td className="px-4 py-2 text-gray-700">{t.teacherCourse || 'N/A'}</td>
+                        <td className="px-4 py-2 text-gray-700">{t.teacherLevel || 'N/A'}</td>
+                        <td className="px-4 py-2">
+                          <div className="flex items-center justify-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => openEditTeacher(t)}
+                              className="inline-flex items-center px-2 py-1 rounded-md border border-gray-300 text-xs text-gray-700 bg-white hover:bg-gray-50"
+                            >
+                              Edit
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteTeacher(t)}
+                              className="inline-flex items-center px-2 py-1 rounded-md border border-red-200 text-xs text-red-600 bg-red-50 hover:bg-red-100"
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                    {filteredProgramHeadUsers.length === 0 && (
+                      <tr>
+                        <td colSpan={5} className="px-4 py-4 text-xs text-center text-gray-400">
+                          No program heads found yet.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {activeSection === 'users' && (
+            <div className="space-y-4">
+              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                <div>
+                  <h2 className="text-lg font-semibold">All Users</h2>
+                  <p className="text-sm text-gray-600">View students and teachers in one list.</p>
+                </div>
+
+                <div className="flex flex-col md:flex-row md:items-center md:justify-end gap-2 w-full md:w-auto">
+                  <button
+                    type="button"
+                    onClick={() => setShowAddUserChooser(true)}
+                    className="inline-flex items-center px-3 py-1.5 rounded-md bg-blue-600 text-white text-xs font-medium shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                  >
+                    Add user
+                  </button>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      try {
+                        const res = await fetch('/api/admin/users', { method: 'GET' });
+                        const data = await res.json().catch(() => ({}));
+                        if (!res.ok || !data.users) {
+                          alert(data.message || 'Failed to refresh users');
+                          return;
+                        }
+                        setUserList(data.users);
+                      } catch (error) {
+                        console.error('Refresh users error', error);
+                        alert('Failed to refresh users');
+                      }
+                    }}
+                    className="inline-flex items-center px-3 py-1.5 rounded-md border border-gray-300 bg-white text-xs font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                  >
+                    Refresh
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-2 w-full">
+                  <div className="inline-flex rounded-md border border-gray-300 bg-white overflow-hidden w-full sm:w-auto">
+                    <button
+                      type="button"
+                      onClick={() => setUserRoleFilter('all')}
+                      className={`px-3 py-1.5 text-xs font-medium ${
+                        userRoleFilter === 'all' ? 'bg-blue-600 text-white' : 'text-gray-700 hover:bg-gray-50'
+                      }`}
+                    >
+                      All
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setUserRoleFilter('student')}
+                      className={`px-3 py-1.5 text-xs font-medium border-l border-gray-300 ${
+                        userRoleFilter === 'student' ? 'bg-blue-600 text-white' : 'text-gray-700 hover:bg-gray-50'
+                      }`}
+                    >
+                      Students
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setUserRoleFilter('teacher')}
+                      className={`px-3 py-1.5 text-xs font-medium border-l border-gray-300 ${
+                        userRoleFilter === 'teacher' ? 'bg-blue-600 text-white' : 'text-gray-700 hover:bg-gray-50'
+                      }`}
+                    >
+                      Teachers
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setUserRoleFilter('program_head')}
+                      className={`px-3 py-1.5 text-xs font-medium border-l border-gray-300 ${
+                        userRoleFilter === 'program_head' ? 'bg-blue-600 text-white' : 'text-gray-700 hover:bg-gray-50'
+                      }`}
+                    >
+                      Program heads
+                    </button>
+                  </div>
+
+                  <input
+                    type="text"
+                    value={studentSearchDraft}
+                    onChange={(e) => setStudentSearchDraft(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') setStudentSearch(studentSearchDraft.trim());
+                    }}
+                    placeholder="Search by name or email"
+                    className="w-full sm:w-72 px-3 py-1.5 border border-gray-300 rounded-md text-xs shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setStudentSearch(studentSearchDraft.trim())}
+                  className="inline-flex items-center px-3 py-1.5 rounded-md border border-gray-300 bg-white text-xs font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                >
+                  Search
+                </button>
+              </div>
+
+              <div className="overflow-x-auto border border-gray-200 rounded-xl">
+                <table className="min-w-full text-xs">
+                  <thead className="bg-gray-50">
+                    <tr className="text-left text-gray-600">
+                      <th className="px-3 py-2 font-semibold">Name</th>
+                      <th className="px-3 py-2 font-semibold">Email</th>
+                      <th className="px-3 py-2 font-semibold">Role</th>
+                      <th className="px-3 py-2 font-semibold">Details</th>
+                      <th className="px-3 py-2 font-semibold">Created</th>
+                      <th className="px-3 py-2 font-semibold">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200">
+                    {userList
+                      .filter(u => u.role === 'student' || u.role === 'teacher' || u.role === 'program_head')
+                      .filter(u => {
+                        if (userRoleFilter === 'all') return true;
+                        return u.role === userRoleFilter;
+                      })
+                      .filter(u => {
+                        if (!studentSearch) return true;
+                        const term = studentSearch.toLowerCase().trim();
+                        if (!term) return true;
+                        const name = (u.name || '').toLowerCase();
+                        const email = (u.email || '').toLowerCase();
+                        return name.includes(term) || email.includes(term);
+                      })
+                      .map(u => {
+                        const detail =
+                          u.role === 'student'
+                            ? `${u.studentDepartment || '—'} ${u.studentYear ? `• Year ${u.studentYear}` : ''}`.trim()
+                            : `${u.teacherCourse || '—'} ${u.teacherLevel ? `• ${u.teacherLevel}` : ''}`.trim();
+
+                        const created = u.createdAt ? new Date(u.createdAt).toLocaleString() : '—';
+                        return (
+                          <tr key={u.id} className="text-gray-800">
+                            <td className="px-3 py-2 whitespace-nowrap">{u.name || '—'}</td>
+                            <td className="px-3 py-2 whitespace-nowrap">{u.email || '—'}</td>
+                            <td className="px-3 py-2 whitespace-nowrap">
+                              <span
+                                className={`inline-flex items-center px-2 py-0.5 rounded-full border text-[11px] ${
+                                  u.role === 'student'
+                                    ? 'bg-blue-50 text-blue-700 border-blue-200'
+                                    : u.role === 'program_head'
+                                      ? 'bg-purple-50 text-purple-700 border-purple-200'
+                                      : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                }`}
+                              >
+                                {u.role}
+                              </span>
+                            </td>
+                            <td className="px-3 py-2">{detail || '—'}</td>
+                            <td className="px-3 py-2 whitespace-nowrap">{created}</td>
+                            <td className="px-3 py-2 whitespace-nowrap">
+                              <div className="flex items-center gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    if (u.role === 'student') openEditStudent(u);
+                                    if (u.role === 'teacher' || u.role === 'program_head') openEditTeacher(u);
+                                  }}
+                                  className="inline-flex items-center px-2 py-1 rounded-md border border-gray-300 bg-white text-[11px] font-medium text-gray-700 hover:bg-gray-50"
+                                >
+                                  Edit
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    if (u.role === 'student') handleDeleteStudent(u);
+                                    if (u.role === 'teacher' || u.role === 'program_head') handleDeleteTeacher(u);
+                                  }}
+                                  className="inline-flex items-center px-2 py-1 rounded-md border border-red-300 bg-white text-[11px] font-medium text-red-700 hover:bg-red-50"
+                                >
+                                  Delete
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
 
@@ -994,6 +1495,30 @@ export default function AdminDashboard({
                       Search
                     </button>
                   </div>
+                </div>
+              </div>
+
+              <div className="rounded-xl border border-gray-200 bg-white p-4">
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                  <div>
+                    <h3 className="text-sm font-semibold text-gray-900">Analytics</h3>
+                    <p className="text-xs text-gray-600">Based on current filters/search.</p>
+                  </div>
+                  <div className="text-sm text-gray-900">Total: {filteredStudentUsers.length}</div>
+                </div>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {Object.keys(studentDepartmentYearMap).length > 0 ? (
+                    Object.entries(studentDepartmentYearMap).map(([dept, info]) => (
+                      <span
+                        key={dept}
+                        className="inline-flex items-center px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200 text-[11px]"
+                      >
+                        {dept}: {info.total}
+                      </span>
+                    ))
+                  ) : (
+                    <span className="text-xs text-gray-400">No data.</span>
+                  )}
                 </div>
               </div>
 
@@ -1233,7 +1758,7 @@ export default function AdminDashboard({
             </div>
           )}
 
-          {activeSection === 'enrollments' && (
+          {false && activeSection === 'enrollments' && (
             <div className="space-y-4">
               <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
                 <div>
@@ -1427,6 +1952,30 @@ export default function AdminDashboard({
                   </button>
                 </div>
               </div>
+
+              <div className="rounded-xl border border-gray-200 bg-white p-4">
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                  <div>
+                    <h3 className="text-sm font-semibold text-gray-900">Analytics</h3>
+                    <p className="text-xs text-gray-600">Based on current filters.</p>
+                  </div>
+                  <div className="text-sm text-gray-900">Total: {filteredTeacherUsers.length}</div>
+                </div>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {Object.keys(teacherCourseLevelMap).length > 0 ? (
+                    Object.entries(teacherCourseLevelMap).map(([course, info]) => (
+                      <span
+                        key={course}
+                        className="inline-flex items-center px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[11px]"
+                      >
+                        {course}: {info.total}
+                      </span>
+                    ))
+                  ) : (
+                    <span className="text-xs text-gray-400">No data.</span>
+                  )}
+                </div>
+              </div>
               {Object.keys(teacherCourseLevelMap).length > 0 && (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                   {Object.entries(teacherCourseLevelMap).map(([course, info]) => (
@@ -1562,7 +2111,7 @@ export default function AdminDashboard({
             </div>
           )}
 
-          {activeSection === 'classes' && (
+          {false && activeSection === 'classes' && (
             <div className="space-y-4">
               <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
                 <div>
@@ -1632,7 +2181,7 @@ export default function AdminDashboard({
             </div>
           )}
 
-          {activeSection === 'subjects' && (
+          {false && activeSection === 'subjects' && (
             <div className="space-y-4">
               <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
                 <div>
@@ -1794,6 +2343,82 @@ export default function AdminDashboard({
                 </p>
               </div>
 
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+                  <p className="text-[11px] font-semibold text-gray-600 uppercase tracking-wide">Present</p>
+                  <p className="mt-2 text-sm text-gray-900">{attendanceSummary?.present ?? 0}</p>
+                </div>
+                <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+                  <p className="text-[11px] font-semibold text-gray-600 uppercase tracking-wide">Late</p>
+                  <p className="mt-2 text-sm text-gray-900">{attendanceSummary?.late ?? 0}</p>
+                </div>
+                <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+                  <p className="text-[11px] font-semibold text-gray-600 uppercase tracking-wide">Absent</p>
+                  <p className="mt-2 text-sm text-gray-900">{attendanceSummary?.absent ?? 0}</p>
+                </div>
+              </div>
+
+              <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white">
+                <table className="min-w-full divide-y divide-gray-200 text-sm">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-4 py-2 text-left text-xs font-semibold text-gray-600">ID</th>
+                      <th className="px-4 py-2 text-left text-xs font-semibold text-gray-600">Enrollment</th>
+                      <th className="px-4 py-2 text-left text-xs font-semibold text-gray-600">Date</th>
+                      <th className="px-4 py-2 text-left text-xs font-semibold text-gray-600">Student</th>
+                      <th className="px-4 py-2 text-left text-xs font-semibold text-gray-600">Subject</th>
+                      <th className="px-4 py-2 text-left text-xs font-semibold text-gray-600">Class</th>
+                      <th className="px-4 py-2 text-left text-xs font-semibold text-gray-600">Teacher</th>
+                      <th className="px-4 py-2 text-left text-xs font-semibold text-gray-600">Status</th>
+                      <th className="px-4 py-2 text-left text-xs font-semibold text-gray-600">Remarks</th>
+                      <th className="px-4 py-2 text-left text-xs font-semibold text-gray-600">Recorded by</th>
+                      <th className="px-4 py-2 text-left text-xs font-semibold text-gray-600">Created</th>
+                      <th className="px-4 py-2 text-left text-xs font-semibold text-gray-600">Updated</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {(recentAttendance || []).map(row => (
+                      <tr key={row.id} className="hover:bg-gray-50">
+                        <td className="px-4 py-2 text-xs text-gray-500">{row.id}</td>
+                        <td className="px-4 py-2 text-xs text-gray-500">{row.enrollment_id ?? '—'}</td>
+                        <td className="px-4 py-2 text-xs text-gray-500">
+                          {row.attendance_date ? new Date(row.attendance_date).toLocaleDateString() : '—'}
+                        </td>
+                        <td className="px-4 py-2 text-gray-900">
+                          <div className="text-xs text-gray-900">{row.student?.name || '—'}</div>
+                          <div className="text-[11px] text-gray-500">{row.student?.email || ''}</div>
+                        </td>
+                        <td className="px-4 py-2 text-gray-700">
+                          {row.subject ? `${row.subject.code} - ${row.subject.name}` : '—'}
+                        </td>
+                        <td className="px-4 py-2 text-gray-700">{row.class?.name || '—'}</td>
+                        <td className="px-4 py-2 text-gray-700">
+                          {row.teacher?.name || '—'}
+                        </td>
+                        <td className="px-4 py-2 text-gray-700">{row.status}</td>
+                        <td className="px-4 py-2 text-gray-700">{row.remarks || ''}</td>
+                        <td className="px-4 py-2 text-gray-700">
+                          {row.recordedBy?.name || '—'}
+                        </td>
+                        <td className="px-4 py-2 text-xs text-gray-500">
+                          {row.created_at ? new Date(row.created_at).toLocaleString() : '—'}
+                        </td>
+                        <td className="px-4 py-2 text-xs text-gray-500">
+                          {row.updated_at ? new Date(row.updated_at).toLocaleString() : '—'}
+                        </td>
+                      </tr>
+                    ))}
+                    {(!recentAttendance || recentAttendance.length === 0) && (
+                      <tr>
+                        <td colSpan={12} className="px-4 py-4 text-xs text-center text-gray-400">
+                          No attendance records found.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
                   <p className="text-xs font-medium text-gray-500">Department focus</p>
@@ -1829,6 +2454,42 @@ export default function AdminDashboard({
                 <p className="text-sm text-gray-600">
                   Generate attendance reports and summaries by student, subject, or date range.
                 </p>
+              </div>
+
+              <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white">
+                <table className="min-w-full divide-y divide-gray-200 text-sm">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-4 py-2 text-left text-xs font-semibold text-gray-600">Subject</th>
+                      <th className="px-4 py-2 text-center text-xs font-semibold text-gray-600">Present</th>
+                      <th className="px-4 py-2 text-center text-xs font-semibold text-gray-600">Late</th>
+                      <th className="px-4 py-2 text-center text-xs font-semibold text-gray-600">Absent</th>
+                      <th className="px-4 py-2 text-center text-xs font-semibold text-gray-600">Attendance %</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {(subjectAttendanceReport || []).map(r => (
+                      <tr key={r.subjectId} className="hover:bg-gray-50">
+                        <td className="px-4 py-2 text-gray-900">
+                          {r.code ? `${r.code} - ${r.name}` : r.name}
+                        </td>
+                        <td className="px-4 py-2 text-center text-gray-700">{r.presentCount}</td>
+                        <td className="px-4 py-2 text-center text-gray-700">{r.lateCount}</td>
+                        <td className="px-4 py-2 text-center text-gray-700">{r.absentCount}</td>
+                        <td className="px-4 py-2 text-center text-gray-900">
+                          {r.attendancePercentage != null ? `${r.attendancePercentage}%` : '—'}
+                        </td>
+                      </tr>
+                    ))}
+                    {(!subjectAttendanceReport || subjectAttendanceReport.length === 0) && (
+                      <tr>
+                        <td colSpan={5} className="px-4 py-4 text-xs text-center text-gray-400">
+                          No report data yet.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -1992,6 +2653,16 @@ export default function AdminDashboard({
                           </p>
                         </>
                       )}
+                      {selectedNotificationUser.role === 'program_head' && (
+                        <>
+                          <p className="text-gray-600 text-xs">
+                            Course: {selectedNotificationUser.teacherCourse || 'N/A'}
+                          </p>
+                          <p className="text-gray-600 text-xs">
+                            Level: {selectedNotificationUser.teacherLevel || 'N/A'}
+                          </p>
+                        </>
+                      )}
                     </div>
                   ) : (
                     <p className="text-xs text-gray-400">Select a notification to see user details.</p>
@@ -2000,10 +2671,61 @@ export default function AdminDashboard({
               </div>
             </div>
           )}
+          {showAddUserChooser && (
+            <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40">
+              <div className="w-full max-w-sm rounded-lg bg-white shadow-xl p-4 sm:p-5">
+                <h3 className="text-sm font-semibold text-gray-900 mb-3">Add user</h3>
+                <p className="text-xs text-gray-600 mb-4">Choose what type of user you want to add.</p>
+
+                <div className="grid grid-cols-1 gap-2 mb-4">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowAddUserChooser(false);
+                      openAddStudent();
+                    }}
+                    className="w-full inline-flex items-center justify-center px-3 py-2 rounded-md bg-blue-600 text-white text-xs font-medium hover:bg-blue-700"
+                  >
+                    Student
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowAddUserChooser(false);
+                      openAddTeacher();
+                    }}
+                    className="w-full inline-flex items-center justify-center px-3 py-2 rounded-md bg-emerald-600 text-white text-xs font-medium hover:bg-emerald-700"
+                  >
+                    Teacher
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowAddUserChooser(false);
+                      openAddProgramHead();
+                    }}
+                    className="w-full inline-flex items-center justify-center px-3 py-2 rounded-md bg-purple-600 text-white text-xs font-medium hover:bg-purple-700"
+                  >
+                    Program head
+                  </button>
+                </div>
+
+                <div className="flex justify-end">
+                  <button
+                    type="button"
+                    onClick={() => setShowAddUserChooser(false)}
+                    className="inline-flex items-center px-3 py-1.5 rounded-md border border-gray-300 text-xs font-medium text-gray-700 bg-white hover:bg-gray-50"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
           {editingStudent && (
             <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40">
               <div className="w-full max-w-sm rounded-lg bg-white shadow-xl p-4 sm:p-5">
-                <h3 className="text-sm font-semibold text-gray-900 mb-3">Edit student</h3>
+                <h3 className="text-sm font-semibold text-gray-900 mb-3">Edit user</h3>
                 <div className="space-y-3 mb-4">
                   <div>
                     <label htmlFor="student-name" className="block text-xs font-medium text-gray-700 mb-1">
@@ -2054,6 +2776,20 @@ export default function AdminDashboard({
                       type="text"
                       value={studentForm.studentYear}
                       onChange={handleStudentFormChange}
+                      className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="student-password" className="block text-xs font-medium text-gray-700 mb-1">
+                      Reset password (optional)
+                    </label>
+                    <input
+                      id="student-password"
+                      name="password"
+                      type="password"
+                      value={studentForm.password}
+                      onChange={handleStudentFormChange}
+                      placeholder="Leave blank to keep current password"
                       className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                     />
                   </div>
@@ -2174,6 +2910,29 @@ export default function AdminDashboard({
                       />
                     )}
                   </div>
+                  <div>
+                    <label htmlFor="new-student-password" className="block text-xs font-medium text-gray-700 mb-1">
+                      Password (optional)
+                    </label>
+                    <div className="relative">
+                      <input
+                        id="new-student-password"
+                        name="password"
+                        type={showNewStudentPassword ? 'text' : 'password'}
+                        value={newStudentForm.password}
+                        onChange={handleNewStudentFormChange}
+                        placeholder="Leave blank to use default password"
+                        className="block w-full rounded-md border border-gray-300 pr-16 px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowNewStudentPassword(prev => !prev)}
+                        className="absolute inset-y-0 right-0 flex items-center px-3 text-xs font-medium text-gray-600 hover:text-gray-900 focus:outline-none"
+                      >
+                        {showNewStudentPassword ? 'Hide' : 'Show'}
+                      </button>
+                    </div>
+                  </div>
                 </div>
                 <div className="flex justify-end gap-2">
                   <button
@@ -2199,7 +2958,9 @@ export default function AdminDashboard({
           {editingTeacher && (
             <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40">
               <div className="w-full max-w-sm rounded-lg bg-white shadow-xl p-4 sm:p-5">
-                <h3 className="text-sm font-semibold text-gray-900 mb-3">Edit teacher</h3>
+                <h3 className="text-sm font-semibold text-gray-900 mb-3">
+                  {teacherRoleDraft === 'program_head' ? 'Edit program head' : 'Edit teacher'}
+                </h3>
                 <div className="space-y-3 mb-4">
                   <div>
                     <label htmlFor="teacher-name" className="block text-xs font-medium text-gray-700 mb-1">
@@ -2253,6 +3014,20 @@ export default function AdminDashboard({
                       className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                     />
                   </div>
+                  <div>
+                    <label htmlFor="teacher-password" className="block text-xs font-medium text-gray-700 mb-1">
+                      Reset password (optional)
+                    </label>
+                    <input
+                      id="teacher-password"
+                      name="password"
+                      type="password"
+                      value={teacherForm.password}
+                      onChange={handleTeacherFormChange}
+                      placeholder="Leave blank to keep current password"
+                      className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
                 </div>
                 <div className="flex justify-end gap-2">
                   <button
@@ -2278,7 +3053,9 @@ export default function AdminDashboard({
           {addingTeacher && (
             <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40">
               <div className="w-full max-w-sm rounded-lg bg-white shadow-xl p-4 sm:p-5">
-                <h3 className="text-sm font-semibold text-gray-900 mb-3">Add teacher</h3>
+                <h3 className="text-sm font-semibold text-gray-900 mb-3">
+                  {teacherRoleDraft === 'program_head' ? 'Add program head' : 'Add teacher'}
+                </h3>
                 <div className="space-y-3 mb-4">
                   <div>
                     <label htmlFor="new-teacher-name" className="block text-xs font-medium text-gray-700 mb-1">
@@ -2370,6 +3147,29 @@ export default function AdminDashboard({
                       />
                     )}
                   </div>
+                  <div>
+                    <label htmlFor="new-teacher-password" className="block text-xs font-medium text-gray-700 mb-1">
+                      Password (optional)
+                    </label>
+                    <div className="relative">
+                      <input
+                        id="new-teacher-password"
+                        name="password"
+                        type={showNewTeacherPassword ? 'text' : 'password'}
+                        value={newTeacherForm.password}
+                        onChange={handleNewTeacherFormChange}
+                        placeholder="Leave blank to use default password"
+                        className="block w-full rounded-md border border-gray-300 pr-16 px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowNewTeacherPassword(prev => !prev)}
+                        className="absolute inset-y-0 right-0 flex items-center px-3 text-xs font-medium text-gray-600 hover:text-gray-900 focus:outline-none"
+                      >
+                        {showNewTeacherPassword ? 'Hide' : 'Show'}
+                      </button>
+                    </div>
+                  </div>
                 </div>
                 <div className="flex justify-end gap-2">
                   <button
@@ -2386,7 +3186,11 @@ export default function AdminDashboard({
                     disabled={teacherSaving}
                     className="inline-flex items-center px-3 py-1.5 rounded-md border border-blue-600 text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-60"
                   >
-                    {teacherSaving ? 'Saving...' : 'Create teacher'}
+                    {teacherSaving
+                      ? 'Saving...'
+                      : teacherRoleDraft === 'program_head'
+                        ? 'Create program head'
+                        : 'Create teacher'}
                   </button>
                 </div>
               </div>

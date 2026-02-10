@@ -6,7 +6,7 @@ CREATE TABLE IF NOT EXISTS users (
   name VARCHAR(100) NOT NULL,
   email VARCHAR(100) NOT NULL UNIQUE,
   password_hash VARCHAR(255) NOT NULL,
-  role ENUM('admin', 'student', 'teacher') NOT NULL,
+  role ENUM('admin', 'student', 'teacher', 'program_head') NOT NULL,
   program VARCHAR(100) DEFAULT NULL,
   course VARCHAR(100) DEFAULT NULL,
   level VARCHAR(50) DEFAULT NULL,
@@ -17,6 +17,8 @@ CREATE TABLE IF NOT EXISTS users (
   DEFAULT CHARSET=utf8mb4
   COLLATE=utf8mb4_unicode_ci;
 
+ALTER TABLE users MODIFY role ENUM('admin', 'student', 'teacher', 'program_head') NOT NULL;
+
 -- Sample seed users
 -- Passwords (plaintext) for login testing:
 --   admin123, teacher123, student123
@@ -25,6 +27,9 @@ VALUES
   ('System Admin', 'admin@sams.local', '$2a$10$am562K3mxBZvIiuWis/9dOmzkCumWaF9VY6zgOTakCNAoCUoQoCaG', 'admin'),
   ('Sample Teacher', 'teacher@sams.local', '$2a$10$T.dVWFC.QPRXBkjfO1WedOTfQtfmPFkA4TsIMqGjPCu8kuInT2d52', 'teacher'),
   ('Sample Student', 'student@sams.local', '$2a$10$fr.we2LTFpuXL9fG8tniCejsq16WqW0tziz8I.uP1ye3zVP1KCNyi', 'student');
+
+INSERT INTO users (name, email, password_hash, role, program, course, level)
+VALUES ('Sample Program Head', 'programhead@sams.local', 'REPLACE_WITH_BCRYPT_HASH', 'program_head', 'BSIT', 'Information Technology', '1');
 
 CREATE TABLE IF NOT EXISTS classes (
   id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
